@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ระบบเช่าเครื่องคอม ห้องปฏิบัติการวิทยาลัย</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+:root{--bg:#EDF1F6;--surface:#fff;--ink:#14233A;--muted:#5B6B80;--line:#D5DDE7;--free:#1F8A70;--free-bg:#E3F4EE;--taken:#C9D1DB;--taken-ink:#7A8797;--sel:#F2A31B;--mine:#3B5BDB;--accent:#14233A;--accent-ink:#fff;--danger:#C0392B;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#0E1622;--surface:#16212F;--ink:#E7EDF5;--muted:#93A3B8;--line:#2A3849;--free:#4CC9A6;--free-bg:#173A33;--taken:#2A3849;--taken-ink:#6B7C91;--sel:#F2B240;--mine:#7C95FF;--accent:#E7EDF5;--accent-ink:#0E1622;--danger:#FF8A7A;color-scheme:dark}}
+*{box-sizing:border-box}[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans Thai",system-ui,sans-serif;line-height:1.6;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
+.wrap{max-width:1040px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:1.6rem;line-height:1.3;margin:0 0 4px}h2{font-size:1rem;margin:0 0 10px}
+header p{margin:0;color:var(--muted)}
+.grid{display:grid;grid-template-columns:1fr;gap:16px;margin-top:16px}
+@media(min-width:860px){.grid{grid-template-columns:1fr 320px;align-items:start}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px}
+.side{display:grid;gap:16px}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:16px}
+.chip{flex:0 0 auto;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;padding:8px 12px;font:inherit;font-size:.9rem;cursor:pointer;text-align:center;min-width:76px}
+.chip small{display:block;color:var(--muted);font-size:.75rem}
+.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.chip[aria-pressed="true"] small{color:inherit;opacity:.8}.chip:disabled{opacity:.45;cursor:not-allowed}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.85rem;color:var(--muted);margin:4px 0 14px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.room{overflow-x:auto}.board{min-width:420px;margin:0 auto;max-width:560px}
+.front{text-align:center;font-size:.8rem;color:var(--muted);border-bottom:2px solid var(--line);padding-bottom:6px;margin-bottom:16px}
+.rows{display:grid;gap:14px}.row{display:grid;grid-template-columns:repeat(3,1fr) 28px repeat(3,1fr);gap:10px;align-items:center}
+.pc{position:relative;border:2px solid var(--free);background:var(--free-bg);color:var(--ink);border-radius:8px 8px 4px 4px;padding:8px 0 10px;font:inherit;font-weight:600;cursor:pointer}
+.pc::after{content:"";position:absolute;left:50%;bottom:-8px;width:18px;height:4px;margin-left:-9px;background:var(--line);border-radius:0 0 3px 3px}
+.pc.taken{background:var(--taken);border-color:var(--taken);color:var(--taken-ink);cursor:not-allowed}
+.pc.mine{background:var(--mine);border-color:var(--mine);color:#fff;cursor:not-allowed}
+.pc.sel{background:var(--sel);border-color:var(--sel);color:#1B1B1B}
+:focus-visible{outline:3px solid var(--mine);outline-offset:2px}
+.sum{margin:0 0 12px;padding:10px 12px;background:var(--bg);border-radius:10px;font-size:.95rem}
+label{display:block;font-size:.9rem;margin-bottom:10px;font-weight:500}
+input,select{display:block;width:100%;margin-top:4px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font:inherit;background:var(--surface);color:var(--ink)}
+.btn{width:100%;padding:12px;border:0;border-radius:10px;background:var(--accent);color:var(--accent-ink);font:inherit;font-weight:600;cursor:pointer}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.msg{min-height:1.4em;margin:10px 0 0;font-size:.9rem}.msg.err{color:var(--danger)}.msg.ok{color:var(--free)}
+ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+li{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:.9rem}
+li button,.link{border:0;background:none;font:inherit;cursor:pointer;padding:4px 8px}li button{color:var(--danger)}.link{color:var(--mine)}
+.bar{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:12px;padding:10px 14px;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.login{max-width:420px;margin:24px auto}
+.tabs{display:flex;gap:8px;margin-bottom:14px}.tabs .chip{flex:1}
+.times{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.times label{margin:0}
+.warn{background:#FFF3CD;color:#5B4500;padding:10px 14px;border-radius:10px;margin-top:12px;font-size:.9rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+<h1>เช่าเครื่องคอม ห้องปฏิบัติการ 301</h1>
+<p>เข้าสู่ระบบด้วยรหัสนักศึกษา แล้วเลือกวัน เวลา และเครื่องที่ต้องการเช่า</p>
+<div class="warn" id="warn" hidden>ยังไม่ได้ใส่ anon key ให้เปิดไฟล์นี้ แล้วแก้ค่า SB_KEY ในส่วน script</div>
+<div class="bar" id="bar" hidden><span>สวัสดี <b id="who"></b></span><button class="link" id="out">ออกจากระบบ</button></div>
+</header>
+
+<section class="card login" id="login">
+<div class="tabs"><button class="chip" id="tIn" aria-pressed="true">เข้าสู่ระบบ</button><button class="chip" id="tUp" aria-pressed="false">สมัครสมาชิก</button></div>
+<label id="nameRow" hidden>ชื่อ-นามสกุล<input id="name" autocomplete="name" placeholder="เช่น สมชาย ใจดี"></label>
+<label>รหัสนักศึกษา<input id="sid" inputmode="numeric" maxlength="11" placeholder="เช่น 6612345678"></label>
+<label>รหัสผ่าน (อย่างน้อย 6 ตัวอักษร)<input id="pw" type="password" autocomplete="current-password"></label>
+<button class="btn" id="enter">เข้าสู่ระบบ</button>
+<p class="msg" id="lmsg" role="status"></p>
+</section>
+
+<div class="grid" id="app" hidden>
+<main class="card">
+<h2>วันที่</h2><div class="chips" id="days"></div>
+<h2>เวลาที่ต้องการใช้</h2>
+<div class="times"><label>เริ่ม<select id="st"></select></label><label>สิ้นสุด<select id="et"></select></label></div>
+<h2>เลือกเครื่อง</h2>
+<div class="legend">
+<span><i style="background:var(--free-bg);border:2px solid var(--free)"></i>ว่าง</span>
+<span><i style="background:var(--sel)"></i>กำลังเลือก</span>
+<span><i style="background:var(--mine)"></i>ของคุณ</span>
+<span><i style="background:var(--taken)"></i>ไม่ว่าง</span>
+</div>
+<div class="room"><div class="board"><div class="front">หน้าห้อง / โต๊ะอาจารย์</div><div class="rows" id="rows"></div></div></div>
+</main>
+<aside class="side">
+<section class="card">
+<h2>ยืนยันการเช่า</h2>
+<p class="sum" id="sum">ยังไม่ได้เลือกเครื่อง</p>
+<button class="btn" id="go" disabled>เช่าเครื่อง</button>
+<p class="msg" id="msg" role="status"></p>
+</section>
+<section class="card">
+<h2>รายการเช่าเครื่องของฉัน</h2>
+<p class="sum" id="next"></p>
+<ul id="mine"></ul>
+</section>
+</aside>
+</div>
+</div>
+
+<script>
+const SB_URL="https://mqdlozxpfnmmvjybzjga.supabase.co";
+const SB_KEY="sb_publishable_JG5pC_vBKMoZSBIb7s_VJA_JwZYurqi";
+
+const $=id=>document.getElementById(id);
+const OPEN=9*60,CLOSE=17*60,STEP=30,MAXM=240;
+const iso=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const nice=s=>new Date(s+"T00:00").toLocaleDateString("th-TH",{weekday:"short",day:"numeric",month:"short"});
+const hm=m=>String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0");
+const mins=t=>+t.slice(0,2)*60+ +t.slice(3,5);
+const em=s=>s+"@student.labbooking.com";
+const DAYS=(()=>{const a=[],n=new Date();for(let i=0;a.length<7;i++){const d=new Date(n.getFullYear(),n.getMonth(),n.getDate()+i);if(d.getDay()!==0)a.push(iso(d))}return a})();
+let sb=null,user=null,mode="in",rows=[],mine=[],state={date:DAYS[0],start:null,end:null,pc:null};
+const say=(id,cls,t)=>{$(id).className="msg "+cls;$(id).textContent=t};
+const nowM=()=>{const n=new Date();return n.getHours()*60+n.getMinutes()};
+const isToday=()=>state.date===iso(new Date());
+
+if(SB_KEY==="PASTE_YOUR_KEY_HERE"){$("warn").hidden=false}else{sb=supabase.createClient(SB_URL,SB_KEY)}
+
+function startOpts(){const a=[];for(let m=OPEN;m<CLOSE;m+=STEP){if(isToday()&&m+STEP<=nowM())continue;a.push(m)}return a}
+function endOpts(s){const a=[];for(let m=s+STEP;m<=Math.min(CLOSE,s+MAXM);m+=STEP)a.push(m);return a}
+function fixTimes(){
+const so=startOpts();
+if(!so.length){state.start=null;state.end=null;return}
+if(!so.includes(state.start))state.start=so[0];
+const eo=endOpts(state.start);
+if(!eo.includes(state.end))state.end=eo[Math.min(1,eo.length-1)]}
+function drawTimes(){
+const so=startOpts();
+$("st").innerHTML=so.map(m=>`<option value="${m}" ${m===state.start?"selected":""}>${hm(m)}</option>`).join("")||"<option>หมดเวลาเช่าวันนี้</option>";
+const eo=state.start==null?[]:endOpts(state.start);
+$("et").innerHTML=eo.map(m=>`<option value="${m}" ${m===state.end?"selected":""}>${hm(m)}</option>`).join("")}
+$("st").onchange=()=>{state.start=+$("st").value;state.pc=null;state.end=null;say("msg","","");draw()};
+$("et").onchange=()=>{state.end=+$("et").value;state.pc=null;say("msg","","");draw()};
+
+function setMode(m){mode=m;$("tIn").setAttribute("aria-pressed",m==="in");$("tUp").setAttribute("aria-pressed",m==="up");$("nameRow").hidden=m==="in";$("enter").textContent=m==="in"?"เข้าสู่ระบบ":"สมัครสมาชิก";$("lmsg").textContent=""}
+$("tIn").onclick=()=>setMode("in");$("tUp").onclick=()=>setMode("up");
+
+function thErr(e){const m=e.message||"";if(/Invalid login/i.test(m))return"รหัสนักศึกษาหรือรหัสผ่านไม่ถูกต้อง";if(/already registered/i.test(m))return"รหัสนี้สมัครแล้ว ให้ใช้แท็บเข้าสู่ระบบ";if(/Password should/i.test(m))return"รหัสผ่านสั้นเกินไป (อย่างน้อย 6 ตัวอักษร)";if(/not confirmed/i.test(m))return"บัญชียังไม่ยืนยัน ให้ปิด Confirm email ใน Supabase แล้วสมัครใหม่";return"เกิดข้อผิดพลาด: "+m}
+
+$("enter").onclick=async()=>{
+if(!sb){say("lmsg","err","ยังไม่ได้ใส่ anon key");return}
+const sid=$("sid").value.trim(),pw=$("pw").value,name=$("name").value.trim();
+if(!/^\d{8,11}$/.test(sid)||pw.length<6||(mode==="up"&&!name)){say("lmsg","err","กรอกข้อมูลให้ครบ (รหัสนักศึกษา 8–11 หลัก รหัสผ่านอย่างน้อย 6 ตัว)");return}
+$("enter").disabled=true;say("lmsg","","กำลังดำเนินการ...");
+let r;
+try{
+if(mode==="up"){
+r=await sb.auth.signUp({email:em(sid),password:pw,options:{data:{full_name:name,student_id:sid}}});
+if(!r.error){
+if(!r.data.session){say("lmsg","err","สมัครแล้วแต่ยังเข้าไม่ได้ ให้ปิด Confirm email ใน Supabase");$("enter").disabled=false;return}
+const p=await sb.from("students").insert({id:r.data.user.id,student_id:sid,full_name:name});
+if(p.error){say("lmsg","err","บันทึกโปรไฟล์ไม่สำเร็จ: "+p.error.message);$("enter").disabled=false;return}}
+}else{r=await sb.auth.signInWithPassword({email:em(sid),password:pw})}
+}catch(e){$("enter").disabled=false;say("lmsg","err","เชื่อมต่อไม่ได้: "+e.message);return}
+$("enter").disabled=false;
+if(r.error){say("lmsg","err",thErr(r.error));return}
+$("pw").value="";await enter(r.data.user)};
+
+$("out").onclick=async()=>{await sb.auth.signOut();user=null;state.pc=null;view()};
+
+async function enter(u){
+const p=await sb.from("students").select("full_name,student_id").eq("id",u.id).maybeSingle();
+const md=u.user_metadata||{};
+user={id:u.id,name:(p.data&&p.data.full_name)||md.full_name||"นักศึกษา",sid:(p.data&&p.data.student_id)||md.student_id||""};
+view();await load()}
+function view(){const on=!!user;$("login").hidden=on;$("app").hidden=!on;$("bar").hidden=!on;if(on)$("who").textContent=user.name+" ("+user.sid+")"}
+
+async function load(){
+if(!user)return;
+const a=await sb.from("bookings").select("computer_id,start_time,end_time,user_id").eq("book_date",state.date);
+rows=a.data||[];
+const b=await sb.from("bookings").select("id,computer_id,book_date,start_time,end_time").eq("user_id",user.id).gte("book_date",iso(new Date())).order("book_date").order("start_time");
+mine=b.data||[];draw()}
+
+function draw(){
+fixTimes();drawTimes();
+$("days").innerHTML=DAYS.map(d=>{const t=new Date(d+"T00:00");return `<button class="chip" data-d="${d}" aria-pressed="${d===state.date}">${t.toLocaleDateString("th-TH",{weekday:"short"})}<small>${t.toLocaleDateString("th-TH",{day:"numeric",month:"short"})}</small></button>`}).join("");
+const none=state.start==null;
+let h="";
+for(let r=0;r<4;r++){h+='<div class="row">';
+for(let c=0;c<6;c++){if(c===3)h+='<span></span>';
+const pc=r*6+c+1;
+const bs=none?[]:rows.filter(b=>b.computer_id===pc&&mins(b.start_time)<state.end&&mins(b.end_time)>state.start);
+const other=bs.some(b=>b.user_id!==user.id);
+let cls="pc",dis="",l="ว่าง";
+if(none){cls+=" taken";dis="disabled";l="ปิด"}
+else if(other){cls+=" taken";dis="disabled";l="ไม่ว่าง"}
+else if(bs.length){cls+=" mine";dis="disabled";l="ของคุณ"}
+else if(state.pc===pc){cls+=" sel";l="กำลังเลือก"}
+h+=`<button class="${cls}" data-pc="${pc}" ${dis} aria-label="เครื่อง ${pc} ${l}">${pc}</button>`}
+h+="</div>"}
+$("rows").innerHTML=h;
+$("sum").innerHTML=none?"วันนี้หมดเวลาเช่าแล้ว เลือกวันอื่น":state.pc?`<b>เครื่อง ${state.pc}</b><br>${nice(state.date)} เวลา ${hm(state.start)}–${hm(state.end)} (${(state.end-state.start)/60} ชั่วโมง)`:`เลือกเครื่องสำหรับเวลา ${hm(state.start)}–${hm(state.end)}`;
+$("go").disabled=!state.pc;
+$("next").textContent=mine.length?`เช่าไว้ ${mine.length} รายการ (รวมไม่เกิน 4 ชั่วโมงต่อวัน)`:"ยังไม่มีรายการเช่าที่กำลังจะมาถึง";
+$("mine").innerHTML=mine.map(b=>`<li><span>เครื่อง ${b.computer_id} · ${nice(b.book_date)} ${b.start_time.slice(0,5)}–${b.end_time.slice(0,5)}</span><button data-del="${b.id}">ยกเลิก</button></li>`).join("")}
+
+async function book(){
+const dur=state.end-state.start;
+const used=mine.filter(b=>b.book_date===state.date).reduce((s,b)=>s+mins(b.end_time)-mins(b.start_time),0);
+if(used+dur>MAXM){say("msg","err","เช่าได้รวมไม่เกิน 4 ชั่วโมงต่อวัน (วันนี้เช่าไปแล้ว "+used/60+" ชั่วโมง)");return}
+$("go").disabled=true;
+const r=await sb.from("bookings").insert({computer_id:state.pc,book_date:state.date,start_time:hm(state.start),end_time:hm(state.end)});
+if(r.error)say("msg","err",r.error.code==="23P01"?"เครื่องนี้เพิ่งมีคนเช่าในช่วงเวลานี้ไป เลือกเครื่องอื่นอีกครั้ง":"ทำรายการเช่าไม่สำเร็จ: "+r.error.message);
+else say("msg","ok","เช่าเครื่อง "+state.pc+" สำเร็จ");
+state.pc=null;await load()}
+
+document.addEventListener("click",async e=>{
+const t=e.target.closest("button");if(!t||!user)return;
+if(t.dataset.d){state.date=t.dataset.d;state.pc=null;say("msg","","");await load()}
+else if(t.dataset.pc){state.pc=+t.dataset.pc;say("msg","","");draw()}
+else if(t.dataset.del){const r=await sb.from("bookings").delete().eq("id",t.dataset.del);say("msg",r.error?"err":"ok",r.error?"ยกเลิกไม่สำเร็จ":"ยกเลิกการเช่าแล้ว");await load()}
+else if(t.id==="go")book()});
+
+setInterval(()=>{if(user)load()},20000);
+(async()=>{if(!sb)return;const s=await sb.auth.getSession();if(s.data.session)await enter(s.data.session.user)})();
+</script>
+</body>
+</html>

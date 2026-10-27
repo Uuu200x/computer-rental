@@ -111,7 +111,8 @@ const hm=m=>String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2
 const mins=t=>+t.slice(0,2)*60+ +t.slice(3,5);
 const em=s=>s+"@student.labbooking.com";
 const DAYS=(()=>{const a=[],n=new Date();for(let i=0;a.length<7;i++){const d=new Date(n.getFullYear(),n.getMonth(),n.getDate()+i);if(d.getDay()!==0)a.push(iso(d))}return a})();
-let sb=null,user=null,mode="in",rows=[],mine=[],state={date:DAYS[0],start:null,end:null,pc:null};
+const TABLE={student:"students",computer:"computers",booking:"bookings"};
+let sb=null,user=null,mode="in",rows=[],mine=[],computers=[],state={date:DAYS[0],start:null,end:null,pc:null};
 const say=(id,cls,t)=>{$(id).className="msg "+cls;$(id).textContent=t};
 const nowM=()=>{const n=new Date();return n.getHours()*60+n.getMinutes()};
 const isToday=()=>state.date===iso(new Date());
@@ -137,7 +138,7 @@ $("et").onchange=()=>{state.end=+$("et").value;state.pc=null;say("msg","","");dr
 function setMode(m){mode=m;$("tIn").setAttribute("aria-pressed",m==="in");$("tUp").setAttribute("aria-pressed",m==="up");$("nameRow").hidden=m==="in";$("enter").textContent=m==="in"?"เข้าสู่ระบบ":"สมัครสมาชิก";$("lmsg").textContent=""}
 $("tIn").onclick=()=>setMode("in");$("tUp").onclick=()=>setMode("up");
 
-function thErr(e){const m=e.message||"";if(/Invalid login/i.test(m))return"รหัสนักศึกษาหรือรหัสผ่านไม่ถูกต้อง";if(/already registered/i.test(m))return"รหัสนี้สมัครแล้ว ให้ใช้แท็บเข้าสู่ระบบ";if(/Password should/i.test(m))return"รหัสผ่านสั้นเกินไป (อย่างน้อย 6 ตัวอักษร)";if(/not confirmed/i.test(m))return"บัญชียังไม่ยืนยัน ให้ปิด Confirm email ใน Supabase แล้วสมัครใหม่";return"เกิดข้อผิดพลาด: "+m}
+function thErr(e){const m=e.message||"";if(/Invalid login/i.test(m))return"ยังไม่พบบัญชีของรหัสนักศึกษานี้ หรือรหัสผ่านไม่ถูกต้อง หากยังไม่เคยสมัคร ให้เลือกแท็บสมัครสมาชิกก่อน";if(/already registered/i.test(m))return"รหัสนี้สมัครแล้ว ให้ใช้แท็บเข้าสู่ระบบ";if(/Password should/i.test(m))return"รหัสผ่านสั้นเกินไป (อย่างน้อย 6 ตัวอักษร)";if(/not confirmed/i.test(m))return"บัญชียังไม่ยืนยัน ให้ปิด Confirm email ใน Supabase แล้วสมัครใหม่";return"เกิดข้อผิดพลาด: "+m}
 
 $("enter").onclick=async()=>{
 if(!sb){say("lmsg","err","ยังไม่ได้ใส่ anon key");return}
@@ -150,7 +151,7 @@ if(mode==="up"){
 r=await sb.auth.signUp({email:em(sid),password:pw,options:{data:{full_name:name,student_id:sid}}});
 if(!r.error){
 if(!r.data.session){say("lmsg","err","สมัครแล้วแต่ยังเข้าไม่ได้ ให้ปิด Confirm email ใน Supabase");$("enter").disabled=false;return}
-const p=await sb.from("students").insert({id:r.data.user.id,student_id:sid,full_name:name});
+const p=await sb.from(TABLE.student).insert({id:r.data.user.id,student_id:sid,full_name:name});
 if(p.error){say("lmsg","err","บันทึกโปรไฟล์ไม่สำเร็จ: "+p.error.message);$("enter").disabled=false;return}}
 }else{r=await sb.auth.signInWithPassword({email:em(sid),password:pw})}
 }catch(e){$("enter").disabled=false;say("lmsg","err","เชื่อมต่อไม่ได้: "+e.message);return}
@@ -161,7 +162,7 @@ $("pw").value="";await enter(r.data.user)};
 $("out").onclick=async()=>{await sb.auth.signOut();user=null;state.pc=null;view()};
 
 async function enter(u){
-const p=await sb.from("students").select("full_name,student_id").eq("id",u.id).maybeSingle();
+const p=await sb.from(TABLE.student).select("full_name,student_id").eq("id",u.id).maybeSingle();
 const md=u.user_metadata||{};
 user={id:u.id,name:(p.data&&p.data.full_name)||md.full_name||"นักศึกษา",sid:(p.data&&p.data.student_id)||md.student_id||""};
 view();await load()}
@@ -169,19 +170,23 @@ function view(){const on=!!user;$("login").hidden=on;$("app").hidden=!on;$("bar"
 
 async function load(){
 if(!user)return;
-const a=await sb.from("bookings").select("computer_id,start_time,end_time,user_id").eq("book_date",state.date);
-rows=a.data||[];
-const b=await sb.from("bookings").select("id,computer_id,book_date,start_time,end_time").eq("user_id",user.id).gte("book_date",iso(new Date())).order("book_date").order("start_time");
-mine=b.data||[];draw()}
+const [a,b,c]=await Promise.all([
+sb.from(TABLE.booking).select("computer_id,start_time,end_time,user_id").eq("book_date",state.date),
+sb.from(TABLE.booking).select("id,computer_id,book_date,start_time,end_time").eq("user_id",user.id).gte("book_date",iso(new Date())).order("book_date").order("start_time"),
+sb.from(TABLE.computer).select("id,room,active").eq("active",true).order("id")
+]);
+const err=a.error||b.error||c.error;
+if(err){say("msg","err","โหลดข้อมูลไม่สำเร็จ: "+err.message);return}
+rows=a.data||[];mine=b.data||[];computers=c.data||[];draw()}
 
 function draw(){
 fixTimes();drawTimes();
 $("days").innerHTML=DAYS.map(d=>{const t=new Date(d+"T00:00");return `<button class="chip" data-d="${d}" aria-pressed="${d===state.date}">${t.toLocaleDateString("th-TH",{weekday:"short"})}<small>${t.toLocaleDateString("th-TH",{day:"numeric",month:"short"})}</small></button>`}).join("");
 const none=state.start==null;
 let h="";
-for(let r=0;r<4;r++){h+='<div class="row">';
-for(let c=0;c<6;c++){if(c===3)h+='<span></span>';
-const pc=r*6+c+1;
+for(let i=0;i<computers.length;i+=6){h+='<div class="row">';
+for(let c=0;c<6&&i+c<computers.length;c++){if(c===3)h+='<span></span>';
+const pc=computers[i+c].id;
 const bs=none?[]:rows.filter(b=>b.computer_id===pc&&mins(b.start_time)<state.end&&mins(b.end_time)>state.start);
 const other=bs.some(b=>b.user_id!==user.id);
 let cls="pc",dis="",l="ว่าง";
@@ -191,7 +196,7 @@ else if(bs.length){cls+=" mine";dis="disabled";l="ของคุณ"}
 else if(state.pc===pc){cls+=" sel";l="กำลังเลือก"}
 h+=`<button class="${cls}" data-pc="${pc}" ${dis} aria-label="เครื่อง ${pc} ${l}">${pc}</button>`}
 h+="</div>"}
-$("rows").innerHTML=h;
+$("rows").innerHTML=h||'<p class="msg">ยังไม่มีเครื่องที่เปิดให้เช่า</p>';
 $("sum").innerHTML=none?"วันนี้หมดเวลาเช่าแล้ว เลือกวันอื่น":state.pc?`<b>เครื่อง ${state.pc}</b><br>${nice(state.date)} เวลา ${hm(state.start)}–${hm(state.end)} (${(state.end-state.start)/60} ชั่วโมง)`:`เลือกเครื่องสำหรับเวลา ${hm(state.start)}–${hm(state.end)}`;
 $("go").disabled=!state.pc;
 $("next").textContent=mine.length?`เช่าไว้ ${mine.length} รายการ (รวมไม่เกิน 4 ชั่วโมงต่อวัน)`:"ยังไม่มีรายการเช่าที่กำลังจะมาถึง";
@@ -202,7 +207,7 @@ const dur=state.end-state.start;
 const used=mine.filter(b=>b.book_date===state.date).reduce((s,b)=>s+mins(b.end_time)-mins(b.start_time),0);
 if(used+dur>MAXM){say("msg","err","เช่าได้รวมไม่เกิน 4 ชั่วโมงต่อวัน (วันนี้เช่าไปแล้ว "+used/60+" ชั่วโมง)");return}
 $("go").disabled=true;
-const r=await sb.from("bookings").insert({computer_id:state.pc,book_date:state.date,start_time:hm(state.start),end_time:hm(state.end)});
+const r=await sb.from(TABLE.booking).insert({user_id:user.id,computer_id:state.pc,book_date:state.date,start_time:hm(state.start),end_time:hm(state.end)});
 if(r.error)say("msg","err",r.error.code==="23P01"?"เครื่องนี้เพิ่งมีคนเช่าในช่วงเวลานี้ไป เลือกเครื่องอื่นอีกครั้ง":"ทำรายการเช่าไม่สำเร็จ: "+r.error.message);
 else say("msg","ok","เช่าเครื่อง "+state.pc+" สำเร็จ");
 state.pc=null;await load()}
@@ -211,7 +216,7 @@ document.addEventListener("click",async e=>{
 const t=e.target.closest("button");if(!t||!user)return;
 if(t.dataset.d){state.date=t.dataset.d;state.pc=null;say("msg","","");await load()}
 else if(t.dataset.pc){state.pc=+t.dataset.pc;say("msg","","");draw()}
-else if(t.dataset.del){const r=await sb.from("bookings").delete().eq("id",t.dataset.del);say("msg",r.error?"err":"ok",r.error?"ยกเลิกไม่สำเร็จ":"ยกเลิกการเช่าแล้ว");await load()}
+else if(t.dataset.del){const r=await sb.from(TABLE.booking).delete().eq("id",t.dataset.del).eq("user_id",user.id);say("msg",r.error?"err":"ok",r.error?"ยกเลิกไม่สำเร็จ":"ยกเลิกการเช่าแล้ว");await load()}
 else if(t.id==="go")book()});
 
 setInterval(()=>{if(user)load()},20000);

@@ -171,8 +171,8 @@ function view(){const on=!!user;$("login").hidden=on;$("app").hidden=!on;$("bar"
 async function load(){
 if(!user)return;
 const [a,b,c]=await Promise.all([
-sb.from(TABLE.booking).select("computer_id,start_time,end_time,user_id").eq("book_date",state.date),
-sb.from(TABLE.booking).select("id,computer_id,book_date,start_time,end_time").eq("user_id",user.id).gte("book_date",iso(new Date())).order("book_date").order("start_time"),
+sb.from(TABLE.booking).select("computer_id,start_time,end_time,user_id,status").eq("book_date",state.date).in("status",["pending","approved"]),
+sb.from(TABLE.booking).select("id,computer_id,book_date,start_time,end_time,status").eq("user_id",user.id).gte("book_date",iso(new Date())).order("book_date").order("start_time"),
 sb.from(TABLE.computer).select("id,room,active").eq("active",true).order("id")
 ]);
 const err=a.error||b.error||c.error;
@@ -200,16 +200,16 @@ $("rows").innerHTML=h||'<p class="msg">ยังไม่มีเครื่�
 $("sum").innerHTML=none?"วันนี้หมดเวลาเช่าแล้ว เลือกวันอื่น":state.pc?`<b>เครื่อง ${state.pc}</b><br>${nice(state.date)} เวลา ${hm(state.start)}–${hm(state.end)} (${(state.end-state.start)/60} ชั่วโมง)`:`เลือกเครื่องสำหรับเวลา ${hm(state.start)}–${hm(state.end)}`;
 $("go").disabled=!state.pc;
 $("next").textContent=mine.length?`เช่าไว้ ${mine.length} รายการ (รวมไม่เกิน 4 ชั่วโมงต่อวัน)`:"ยังไม่มีรายการเช่าที่กำลังจะมาถึง";
-$("mine").innerHTML=mine.map(b=>`<li><span>เครื่อง ${b.computer_id} · ${nice(b.book_date)} ${b.start_time.slice(0,5)}–${b.end_time.slice(0,5)}</span><button data-del="${b.id}">ยกเลิก</button></li>`).join("")}
+$("mine").innerHTML=mine.map(b=>{const status=b.status==="pending"?"รอแอดมินอนุมัติ":b.status==="approved"?"ยืนยันแล้ว":"ไม่อนุมัติ";return `<li><span>เครื่อง ${b.computer_id} · ${nice(b.book_date)} ${b.start_time.slice(0,5)}–${b.end_time.slice(0,5)}<small>${status}</small></span><button data-del="${b.id}">ยกเลิก</button></li>`}).join("")}
 
 async function book(){
 const dur=state.end-state.start;
-const used=mine.filter(b=>b.book_date===state.date).reduce((s,b)=>s+mins(b.end_time)-mins(b.start_time),0);
+const used=mine.filter(b=>b.book_date===state.date&&b.status!=="declined").reduce((s,b)=>s+mins(b.end_time)-mins(b.start_time),0);
 if(used+dur>MAXM){say("msg","err","เช่าได้รวมไม่เกิน 4 ชั่วโมงต่อวัน (วันนี้เช่าไปแล้ว "+used/60+" ชั่วโมง)");return}
 $("go").disabled=true;
-const r=await sb.from(TABLE.booking).insert({user_id:user.id,computer_id:state.pc,book_date:state.date,start_time:hm(state.start),end_time:hm(state.end)});
-if(r.error)say("msg","err",r.error.code==="23P01"?"เครื่องนี้เพิ่งมีคนเช่าในช่วงเวลานี้ไป เลือกเครื่องอื่นอีกครั้ง":"ทำรายการเช่าไม่สำเร็จ: "+r.error.message);
-else say("msg","ok","เช่าเครื่อง "+state.pc+" สำเร็จ");
+const r=await sb.from(TABLE.booking).insert({user_id:user.id,computer_id:state.pc,book_date:state.date,start_time:hm(state.start),end_time:hm(state.end),status:"pending"});
+if(r.error)say("msg","err",r.error.code==="23P01"?"ช่วงเวลานี้มีคำขอหรือรายการเช่าอยู่แล้ว เลือกเครื่องหรือเวลาอื่น":"ส่งคำขอไม่สำเร็จ: "+r.error.message);
+else say("msg","ok","ส่งคำขอเช่าเครื่อง "+state.pc+" แล้ว กรุณารอแอดมินอนุมัติ");
 state.pc=null;await load()}
 
 document.addEventListener("click",async e=>{

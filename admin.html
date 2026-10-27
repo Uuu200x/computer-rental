@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
-<title>แอดมิน · ระบบเช่าเครื่องคอม ห้อง 301</title>
+<title>แอดมิน · ห้องปฏิบัติการที่ T310</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <style>
@@ -46,8 +46,8 @@ li button{border:0;background:none;font:inherit;color:var(--danger);cursor:point
 <body>
 <div class="wrap">
 <header>
-<h1>แอดมิน ห้องปฏิบัติการ 301</h1>
-<p class="muted">ดูและยกเลิกการเช่า ปิดเครื่องที่เสีย และกำหนดวันปิดห้อง</p>
+<h1>แอดมิน ห้องปฏิบัติการที่ T310</h1>
+<p class="muted">ดูและยกเลิกการเช่า ตั้งสถานะเครื่องที่ใช้งานไม่ได้ชั่วคราว และกำหนดวันปิดห้อง</p>
 <div class="bar" id="bar" hidden><span>แอดมิน <b id="who"></b></span><button class="link" id="out">ออกจากระบบ</button></div>
 </header>
 
@@ -80,8 +80,8 @@ li button{border:0;background:none;font:inherit;color:var(--danger);cursor:point
 </main>
 <aside class="side">
 <section class="card">
-<h2>เครื่องที่ปิดใช้งาน</h2>
-<p class="muted" style="margin-bottom:10px;font-size:.9rem">กดเลขเครื่องเพื่อปิดหรือเปิด (สีแดง = ปิด)</p>
+<h2>เครื่องที่ใช้งานไม่ได้ชั่วคราว</h2>
+<p class="muted" style="margin-bottom:10px;font-size:.9rem">กดเลขเครื่องเพื่อเปลี่ยนสถานะ (สีแดง = ใช้งานไม่ได้ชั่วคราว)</p>
 <div class="pcs" id="pcs"></div>
 <p class="msg" id="pmsg" role="status"></p>
 </section>
@@ -201,7 +201,7 @@ const r=await sb.from("disabled_computers").select("computer_id");
 if(r.error){say("pmsg","err","โหลดสถานะเครื่องไม่สำเร็จ (รัน admin.sql แล้วหรือยัง?)");return}
 off=new Set((r.data||[]).map(x=>x.computer_id));drawPcs()}
 function drawPcs(){
-$("pcs").innerHTML=Array.from({length:24},(_,i)=>i+1).map(n=>`<button class="pc${off.has(n)?" off":""}" data-pc="${n}" aria-pressed="${off.has(n)}" aria-label="เครื่อง ${n} ${off.has(n)?"ปิดอยู่":"เปิดอยู่"}">${n}</button>`).join("")}
+$("pcs").innerHTML=Array.from({length:24},(_,i)=>i+1).map(n=>`<button class="pc${off.has(n)?" off":""}" data-pc="${n}" aria-pressed="${off.has(n)}" aria-label="เครื่อง ${n} ${off.has(n)?"ใช้งานไม่ได้ชั่วคราว":"ใช้งานได้"}">${n}</button>`).join("")}
 
 async function loadClosed(){
 const r=await sb.from("closed_days").select("day,reason").gte("day",iso(new Date())).order("day");
@@ -235,7 +235,7 @@ else if(t.dataset.pc){
 const n=+t.dataset.pc,isOff=off.has(n);
 const r=isOff?await sb.from("disabled_computers").delete().eq("computer_id",n).select():await sb.from("disabled_computers").insert({computer_id:n}).select();
 if(r.error||!(r.data||[]).length)say("pmsg","err","เปลี่ยนสถานะไม่สำเร็จ");
-else say("pmsg","ok","เครื่อง "+n+(isOff?" เปิดใช้งานแล้ว":" ปิดใช้งานแล้ว"));
+else say("pmsg","ok","เครื่อง "+n+(isOff?" ใช้งานได้แล้ว":" ใช้งานไม่ได้ชั่วคราวแล้ว"));
 await loadOff()}
 else if(t.dataset.cd){
 const r=await sb.from("closed_days").delete().eq("day",t.dataset.cd).select();

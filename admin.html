@@ -26,6 +26,7 @@ input{display:block;width:100%;margin-top:4px;padding:10px 12px;border:1px solid
 .btn.full{width:100%}.btn.ghost{background:none;color:var(--ink);border:1px solid var(--line)}.btn:disabled{opacity:.4;cursor:not-allowed}
 .link{border:0;background:none;font:inherit;color:var(--mine);cursor:pointer;padding:4px 8px}
 .login{max-width:420px;margin:24px auto}
+.password-box{margin:14px 0 18px;padding:14px;border:1px solid var(--line);border-radius:12px}.password-box h2{margin-bottom:8px}.password-box label{margin-top:10px}.password-box .msg{margin-bottom:0}
 .msg{min-height:1.4em;margin:10px 0 0;font-size:.9rem}.msg.err{color:var(--danger)}.msg.ok{color:var(--free)}
 .tools{display:flex;gap:8px;align-items:end;flex-wrap:wrap;margin-bottom:14px}.tools label{margin:0;flex:1;min-width:150px}
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
@@ -60,6 +61,16 @@ li button{border:0;background:none;font:inherit;color:var(--danger);cursor:point
 
 <div class="grid" id="app" hidden>
 <main class="card">
+<section class="password-box" aria-labelledby="pwtitle">
+<h2 id="pwtitle">เปลี่ยนรหัสผ่านบัญชี</h2>
+<p class="muted" style="font-size:.9rem">รหัสใหม่นี้จะใช้กับบัญชีเดียวกันทั้งหน้าเว็บนักศึกษาและหน้าแอดมิน</p>
+<form id="pwform">
+<label>รหัสผ่านใหม่<input id="newpw" type="password" autocomplete="new-password" minlength="8" required></label>
+<label>ยืนยันรหัสผ่านใหม่<input id="newpw2" type="password" autocomplete="new-password" minlength="8" required></label>
+<button class="btn" id="savepw" type="submit">บันทึกเปลี่ยนรหัส</button>
+<p class="msg" id="pwmsg" role="status" aria-live="polite"></p>
+</form>
+</section>
 <h2>รายการเช่า</h2>
 <div class="tools">
 <button class="btn ghost" id="prev" aria-label="วันก่อนหน้า">ก่อนหน้า</button>
@@ -125,6 +136,21 @@ $("who").textContent=sid||(u.user_metadata&&u.user_metadata.student_id)||"";
 say("lmsg","","");show(true);$("day").value=day;await loadAll()}
 
 $("out").onclick=async()=>{await sb.auth.signOut();show(false)};
+
+$("pwform").onsubmit=async e=>{
+e.preventDefault();
+const p=$("newpw").value,p2=$("newpw2").value;
+if(p.length<8){say("pwmsg","err","รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร");return}
+if(p!==p2){say("pwmsg","err","รหัสผ่านทั้งสองช่องไม่ตรงกัน");return}
+$("savepw").disabled=true;say("pwmsg","","กำลังบันทึก...");
+try{
+const r=await sb.auth.updateUser({password:p});
+if(r.error){say("pwmsg","err","เปลี่ยนรหัสผ่านไม่สำเร็จ: "+r.error.message);return}
+$("newpw").value="";$("newpw2").value="";
+say("pwmsg","ok","เปลี่ยนรหัสผ่านเรียบร้อยแล้ว");
+}catch(x){say("pwmsg","err","เปลี่ยนรหัสผ่านไม่สำเร็จ: "+x.message)}
+finally{$("savepw").disabled=false}
+};
 
 async function loadAll(){await Promise.all([loadDay(),loadOff(),loadClosed()])}
 

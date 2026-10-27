@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>เช่าเครื่องคอม ห้องปฏิบัติการ T310</title>
+<title>เช่าเครื่องคอม ห้องปฏิบัติการที่ T310</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <style>
@@ -55,7 +55,7 @@ li button,.link{border:0;background:none;font:inherit;cursor:pointer;padding:4px
 <body>
 <div class="wrap">
 <header>
-<h1>เช่าเครื่องคอม ห้องปฏิบัติการ T310</h1>
+<h1>เช่าเครื่องคอม ห้องปฏิบัติการที่ T310</h1>
 <p>เข้าสู่ระบบด้วยรหัสนักศึกษา แล้วเลือกวัน เวลา และเครื่องที่ต้องการเช่า</p>
 <div class="warn" id="warn" hidden>ยังไม่ได้ใส่ anon key ให้เปิดไฟล์นี้ แล้วแก้ค่า SB_KEY ในส่วน script</div>
 <div class="bar" id="bar" hidden><span>สวัสดี <b id="who"></b></span><button class="link" id="out">ออกจากระบบ</button></div>
@@ -113,7 +113,7 @@ const nice=s=>new Date(s+"T00:00").toLocaleDateString("th-TH",{weekday:"short",d
 const hm=m=>String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0");
 const mins=t=>+t.slice(0,2)*60+ +t.slice(3,5);
 const em=s=>s+"@student.labbooking.com";
-const DAYS=(()=>{const a=[],n=new Date();for(let i=0;a.length<7;i++){const d=new Date(n.getFullYear(),n.getMonth(),n.getDate()+i);if(d.getDay()!==0)a.push(iso(d))}return a})();
+const DAYS=(()=>{const a=[],n=new Date();for(let i=0;a.length<7;i++){const d=new Date(n.getFullYear(),n.getMonth(),n.getDate()+i);if(d.getDay()!==0&&d.getDay()!==6)a.push(iso(d))}return a})();
 const TABLE={student:"students",computer:"computers",booking:"bookings"};
 let sb=null,user=null,mode="in",rows=[],mine=[],computers=[],disabledComputers=new Set(),state={date:DAYS[0],start:null,end:null,pc:null};
 const say=(id,cls,t)=>{$(id).className="msg "+cls;$(id).textContent=t};

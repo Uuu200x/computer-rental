@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>ระบบเช่าเครื่องคอม ห้องปฏิบัติการวิทยาลัย</title>
+<title>เช่าเครื่องคอม ห้องปฏิบัติการที่ T310</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <style>
-:root{--bg:#EDF1F6;--surface:#fff;--ink:#14233A;--muted:#5B6B80;--line:#D5DDE7;--free:#1F8A70;--free-bg:#E3F4EE;--taken:#C9D1DB;--taken-ink:#7A8797;--sel:#F2A31B;--mine:#3B5BDB;--accent:#14233A;--accent-ink:#fff;--danger:#C0392B;color-scheme:light}
-@media (prefers-color-scheme:dark){:root{--bg:#0E1622;--surface:#16212F;--ink:#E7EDF5;--muted:#93A3B8;--line:#2A3849;--free:#4CC9A6;--free-bg:#173A33;--taken:#2A3849;--taken-ink:#6B7C91;--sel:#F2B240;--mine:#7C95FF;--accent:#E7EDF5;--accent-ink:#0E1622;--danger:#FF8A7A;color-scheme:dark}}
+:root{--bg:#EDF1F6;--surface:#fff;--ink:#14233A;--muted:#5B6B80;--line:#D5DDE7;--free:#1F8A70;--free-bg:#E3F4EE;--taken:#C9D1DB;--taken-ink:#7A8797;--unavailable:#F8DDD9;--sel:#F2A31B;--mine:#3B5BDB;--accent:#14233A;--accent-ink:#fff;--danger:#C0392B;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#0E1622;--surface:#16212F;--ink:#E7EDF5;--muted:#93A3B8;--line:#2A3849;--free:#4CC9A6;--free-bg:#173A33;--taken:#2A3849;--taken-ink:#6B7C91;--unavailable:#4A2420;--sel:#F2B240;--mine:#7C95FF;--accent:#E7EDF5;--accent-ink:#0E1622;--danger:#FF8A7A;color-scheme:dark}}
 *{box-sizing:border-box}[hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans Thai",system-ui,sans-serif;line-height:1.6;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
 .wrap{max-width:1040px;margin:0 auto;padding:20px 16px 48px}
@@ -32,6 +32,7 @@ header p{margin:0;color:var(--muted)}
 .pc::after{content:"";position:absolute;left:50%;bottom:-8px;width:18px;height:4px;margin-left:-9px;background:var(--line);border-radius:0 0 3px 3px}
 .pc.taken{background:var(--taken);border-color:var(--taken);color:var(--taken-ink);cursor:not-allowed}
 .pc.mine{background:var(--mine);border-color:var(--mine);color:#fff;cursor:not-allowed}
+.pc.unavailable{background:var(--unavailable);border-color:var(--danger);color:var(--danger);cursor:not-allowed}
 .pc.sel{background:var(--sel);border-color:var(--sel);color:#1B1B1B}
 :focus-visible{outline:3px solid var(--mine);outline-offset:2px}
 .sum{margin:0 0 12px;padding:10px 12px;background:var(--bg);border-radius:10px;font-size:.95rem}
@@ -54,7 +55,7 @@ li button,.link{border:0;background:none;font:inherit;cursor:pointer;padding:4px
 <body>
 <div class="wrap">
 <header>
-<h1>เช่าเครื่องคอม ห้องปฏิบัติการ 301</h1>
+<h1>เช่าเครื่องคอม ห้องปฏิบัติการที่ T310</h1>
 <p>เข้าสู่ระบบด้วยรหัสนักศึกษา แล้วเลือกวัน เวลา และเครื่องที่ต้องการเช่า</p>
 <div class="warn" id="warn" hidden>ยังไม่ได้ใส่ anon key ให้เปิดไฟล์นี้ แล้วแก้ค่า SB_KEY ในส่วน script</div>
 <div class="bar" id="bar" hidden><span>สวัสดี <b id="who"></b></span><button class="link" id="out">ออกจากระบบ</button></div>
@@ -80,7 +81,9 @@ li button,.link{border:0;background:none;font:inherit;cursor:pointer;padding:4px
 <span><i style="background:var(--sel)"></i>กำลังเลือก</span>
 <span><i style="background:var(--mine)"></i>ของคุณ</span>
 <span><i style="background:var(--taken)"></i>ไม่ว่าง</span>
+<span><i style="background:var(--unavailable);border:2px solid var(--danger)"></i>ใช้งานไม่ได้ชั่วคราว</span>
 </div>
+<p class="warn" id="availabilityNote" hidden></p>
 <div class="room"><div class="board"><div class="front">หน้าห้อง / โต๊ะอาจารย์</div><div class="rows" id="rows"></div></div></div>
 </main>
 <aside class="side">
@@ -112,7 +115,7 @@ const mins=t=>+t.slice(0,2)*60+ +t.slice(3,5);
 const em=s=>s+"@student.labbooking.com";
 const DAYS=(()=>{const a=[],n=new Date();for(let i=0;a.length<7;i++){const d=new Date(n.getFullYear(),n.getMonth(),n.getDate()+i);if(d.getDay()!==0)a.push(iso(d))}return a})();
 const TABLE={student:"students",computer:"computers",booking:"bookings"};
-let sb=null,user=null,mode="in",rows=[],mine=[],computers=[],state={date:DAYS[0],start:null,end:null,pc:null};
+let sb=null,user=null,mode="in",rows=[],mine=[],computers=[],disabledComputers=new Set(),state={date:DAYS[0],start:null,end:null,pc:null};
 const say=(id,cls,t)=>{$(id).className="msg "+cls;$(id).textContent=t};
 const nowM=()=>{const n=new Date();return n.getHours()*60+n.getMinutes()};
 const isToday=()=>state.date===iso(new Date());
@@ -170,19 +173,24 @@ function view(){const on=!!user;$("login").hidden=on;$("app").hidden=!on;$("bar"
 
 async function load(){
 if(!user)return;
-const [a,b,c]=await Promise.all([
+const [a,b,c,d]=await Promise.all([
 sb.from(TABLE.booking).select("computer_id,start_time,end_time,user_id,status").eq("book_date",state.date).in("status",["pending","approved"]),
 sb.from(TABLE.booking).select("id,computer_id,book_date,start_time,end_time,status").eq("user_id",user.id).gte("book_date",iso(new Date())).order("book_date").order("start_time"),
-sb.from(TABLE.computer).select("id,room,active").eq("active",true).order("id")
+sb.from(TABLE.computer).select("id,room,active").eq("active",true).order("id"),
+sb.from("disabled_computers").select("computer_id")
 ]);
-const err=a.error||b.error||c.error;
+const err=a.error||b.error||c.error||d.error;
 if(err){say("msg","err","โหลดข้อมูลไม่สำเร็จ: "+err.message);return}
-rows=a.data||[];mine=b.data||[];computers=c.data||[];draw()}
+rows=a.data||[];mine=b.data||[];computers=c.data||[];disabledComputers=new Set((d.data||[]).map(x=>+x.computer_id));draw()}
 
 function draw(){
 fixTimes();drawTimes();
+if(state.pc!==null&&disabledComputers.has(state.pc))state.pc=null;
 $("days").innerHTML=DAYS.map(d=>{const t=new Date(d+"T00:00");return `<button class="chip" data-d="${d}" aria-pressed="${d===state.date}">${t.toLocaleDateString("th-TH",{weekday:"short"})}<small>${t.toLocaleDateString("th-TH",{day:"numeric",month:"short"})}</small></button>`}).join("");
 const none=state.start==null;
+const unavailable=[...disabledComputers].sort((a,b)=>a-b);
+$("availabilityNote").hidden=!unavailable.length;
+if(unavailable.length)$("availabilityNote").textContent="เครื่อง "+unavailable.join(", ")+" ใช้งานไม่ได้ชั่วคราว";
 let h="";
 for(let i=0;i<computers.length;i+=6){h+='<div class="row">';
 for(let c=0;c<6&&i+c<computers.length;c++){if(c===3)h+='<span></span>';
@@ -190,7 +198,8 @@ const pc=computers[i+c].id;
 const bs=none?[]:rows.filter(b=>b.computer_id===pc&&mins(b.start_time)<state.end&&mins(b.end_time)>state.start);
 const other=bs.some(b=>b.user_id!==user.id);
 let cls="pc",dis="",l="ว่าง";
-if(none){cls+=" taken";dis="disabled";l="ปิด"}
+if(disabledComputers.has(+pc)){cls+=" unavailable";dis="disabled";l="ใช้งานไม่ได้ชั่วคราว"}
+else if(none){cls+=" taken";dis="disabled";l="ปิด"}
 else if(other){cls+=" taken";dis="disabled";l="ไม่ว่าง"}
 else if(bs.length){cls+=" mine";dis="disabled";l="ของคุณ"}
 else if(state.pc===pc){cls+=" sel";l="กำลังเลือก"}

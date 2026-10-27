@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>แอดมิน · ระบบเช่าเครื่องคอม ห้อง 301</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+:root{--bg:#EDF1F6;--surface:#fff;--ink:#14233A;--muted:#5B6B80;--line:#D5DDE7;--free:#1F8A70;--free-bg:#E3F4EE;--off:#F8DDD9;--accent:#14233A;--accent-ink:#fff;--danger:#C0392B;--mine:#3B5BDB;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#0E1622;--surface:#16212F;--ink:#E7EDF5;--muted:#93A3B8;--line:#2A3849;--free:#4CC9A6;--free-bg:#173A33;--off:#4A2420;--accent:#E7EDF5;--accent-ink:#0E1622;--danger:#FF8A7A;--mine:#7C95FF;color-scheme:dark}}
+*{box-sizing:border-box}[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans Thai",system-ui,sans-serif;line-height:1.6;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
+.wrap{max-width:1040px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:1.6rem;line-height:1.3;margin:0 0 4px}h2{font-size:1rem;margin:0 0 10px}
+.muted{color:var(--muted);margin:0}
+.grid{display:grid;grid-template-columns:1fr;gap:16px;margin-top:16px}
+@media(min-width:860px){.grid{grid-template-columns:1fr 340px;align-items:start}}
+.side{display:grid;gap:16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px}
+.bar{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:12px;padding:10px 14px;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+label{display:block;font-size:.9rem;margin-bottom:10px;font-weight:500}
+input{display:block;width:100%;margin-top:4px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font:inherit;background:var(--surface);color:var(--ink)}
+.btn{padding:10px 14px;border:0;border-radius:10px;background:var(--accent);color:var(--accent-ink);font:inherit;font-weight:600;cursor:pointer}
+.btn.full{width:100%}.btn.ghost{background:none;color:var(--ink);border:1px solid var(--line)}.btn:disabled{opacity:.4;cursor:not-allowed}
+.link{border:0;background:none;font:inherit;color:var(--mine);cursor:pointer;padding:4px 8px}
+.login{max-width:420px;margin:24px auto}
+.msg{min-height:1.4em;margin:10px 0 0;font-size:.9rem}.msg.err{color:var(--danger)}.msg.ok{color:var(--free)}
+.tools{display:flex;gap:8px;align-items:end;flex-wrap:wrap;margin-bottom:14px}.tools label{margin:0;flex:1;min-width:150px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.stat{background:var(--bg);border-radius:10px;padding:10px 12px;font-size:.85rem;color:var(--muted)}
+.stat b{display:block;font-size:1.4rem;color:var(--ink);line-height:1.3}
+ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+li{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:.9rem}
+li .t{font-weight:600;white-space:nowrap}li small{display:block;color:var(--muted)}
+li button{border:0;background:none;font:inherit;color:var(--danger);cursor:pointer;padding:4px 8px}
+.empty{padding:16px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:10px}
+.pcs{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+.pc{border:2px solid var(--free);background:var(--free-bg);color:var(--ink);border-radius:8px;padding:8px 0;font:inherit;font-weight:600;cursor:pointer}
+.pc.off{border-color:var(--danger);background:var(--off);text-decoration:line-through}
+.note{background:#FFF3CD;color:#5B4500;padding:10px 14px;border-radius:10px;margin-bottom:12px;font-size:.9rem}
+:focus-visible{outline:3px solid var(--mine);outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+<h1>แอดมิน ห้องปฏิบัติการ 301</h1>
+<p class="muted">ดูและยกเลิกการเช่า ปิดเครื่องที่เสีย และกำหนดวันปิดห้อง</p>
+<div class="bar" id="bar" hidden><span>แอดมิน <b id="who"></b></span><button class="link" id="out">ออกจากระบบ</button></div>
+</header>
+
+<form class="card login" id="login">
+<label>รหัสนักศึกษา<input id="sid" inputmode="numeric" autocomplete="username" maxlength="11"></label>
+<label>รหัสผ่าน<input id="pw" type="password" autocomplete="current-password"></label>
+<button class="btn full" id="enter">เข้าสู่ระบบ</button>
+<p class="msg" id="lmsg" role="status"></p>
+</form>
+
+<div class="grid" id="app" hidden>
+<main class="card">
+<h2>รายการเช่า</h2>
+<div class="tools">
+<button class="btn ghost" id="prev" aria-label="วันก่อนหน้า">ก่อนหน้า</button>
+<label>วันที่<input id="day" type="date"></label>
+<button class="btn ghost" id="next" aria-label="วันถัดไป">ถัดไป</button>
+<button class="btn" id="csv">ดาวน์โหลด CSV</button>
+</div>
+<div class="note" id="closedNote" hidden></div>
+<div class="stats"><div class="stat"><b id="sN">0</b>รายการ</div><div class="stat"><b id="sH">0</b>ชั่วโมงรวม</div><div class="stat"><b id="sP">0</b>เครื่องที่ถูกใช้</div></div>
+<ul id="list"></ul>
+<p class="msg" id="msg" role="status"></p>
+</main>
+<aside class="side">
+<section class="card">
+<h2>เครื่องที่ปิดใช้งาน</h2>
+<p class="muted" style="margin-bottom:10px;font-size:.9rem">กดเลขเครื่องเพื่อปิดหรือเปิด (สีแดง = ปิด)</p>
+<div class="pcs" id="pcs"></div>
+<p class="msg" id="pmsg" role="status"></p>
+</section>
+<section class="card">
+<h2>วันปิดห้อง</h2>
+<label>วันที่<input id="cd" type="date"></label>
+<label>เหตุผล<input id="cr" placeholder="เช่น วันหยุดนักขัตฤกษ์"></label>
+<button class="btn full" id="cadd">เพิ่มวันปิด</button>
+<p class="msg" id="cmsg" role="status"></p>
+<ul id="closed"></ul>
+</section>
+</aside>
+</div>
+</div>
+
+<script>
+const SB_URL="https://mqdlozxpfnmmvjybzjga.supabase.co";
+const SB_KEY="sb_publishable_JG5pC_vBKMoZSBIb7s_VJA_JwZYurqi";
+const sb=supabase.createClient(SB_URL,SB_KEY);
+const $=id=>document.getElementById(id);
+const iso=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const nice=s=>new Date(s+"T00:00").toLocaleDateString("th-TH",{weekday:"short",day:"numeric",month:"short",year:"numeric"});
+const mins=t=>+t.slice(0,2)*60+ +t.slice(3,5);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const say=(id,cls,t)=>{$(id).className="msg "+cls;$(id).textContent=t};
+let day=iso(new Date()),list=[],names={},off=new Set(),closed=[],ok=false;
+
+function show(on){ok=on;$("login").hidden=on;$("app").hidden=!on;$("bar").hidden=!on}
+
+$("login").onsubmit=async e=>{
+e.preventDefault();
+const sid=$("sid").value.trim(),pw=$("pw").value;
+if(!sid||!pw){say("lmsg","err","กรอกรหัสนักศึกษาและรหัสผ่าน");return}
+$("enter").disabled=true;say("lmsg","","กำลังเข้าสู่ระบบ...");
+try{
+const r=await sb.auth.signInWithPassword({email:sid+"@student.labbooking.com",password:pw});
+if(r.error){say("lmsg","err","รหัสนักศึกษาหรือรหัสผ่านไม่ถูกต้อง");return}
+$("pw").value="";await enter(r.data.user,sid)
+}catch(x){say("lmsg","err","เชื่อมต่อไม่ได้: "+x.message)}
+finally{$("enter").disabled=false}};
+
+async function enter(u,sid){
+const a=await sb.from("admins").select("user_id").eq("user_id",u.id).maybeSingle();
+if(a.error){await sb.auth.signOut();show(false);say("lmsg","err","ตรวจสิทธิ์แอดมินไม่สำเร็จ: "+a.error.message);return}
+if(!a.data){await sb.auth.signOut();show(false);say("lmsg","err","บัญชีนี้ไม่มีสิทธิ์แอดมิน (ตรวจว่าเพิ่มใน ตาราง admins แล้ว)");return}
+$("who").textContent=sid||(u.user_metadata&&u.user_metadata.student_id)||"";
+say("lmsg","","");show(true);$("day").value=day;await loadAll()}
+
+$("out").onclick=async()=>{await sb.auth.signOut();show(false)};
+
+async function loadAll(){await Promise.all([loadDay(),loadOff(),loadClosed()])}
+
+async function loadDay(){
+const b=await sb.from("bookings").select("id,computer_id,user_id,start_time,end_time").eq("book_date",day).order("start_time").order("computer_id");
+if(b.error){say("msg","err","โหลดรายการไม่สำเร็จ: "+b.error.message);return}
+list=b.data||[];names={};
+const ids=[...new Set(list.map(x=>x.user_id))];
+if(ids.length){const s=await sb.from("students").select("id,full_name,student_id").in("id",ids);(s.data||[]).forEach(x=>names[x.id]=x)}
+drawDay()}
+
+function drawDay(){
+const tot=list.reduce((s,b)=>s+mins(b.end_time)-mins(b.start_time),0);
+$("sN").textContent=list.length;$("sH").textContent=+(tot/60).toFixed(1);$("sP").textContent=new Set(list.map(b=>b.computer_id)).size;
+const c=closed.find(x=>x.day===day);
+$("closedNote").hidden=!c;if(c)$("closedNote").textContent="วันนี้เป็นวันปิดห้อง"+(c.reason?": "+c.reason:"");
+$("list").innerHTML=list.length?list.map(b=>{const n=names[b.user_id];
+return `<li><span><span class="t">${b.start_time.slice(0,5)}–${b.end_time.slice(0,5)}</span> เครื่อง ${b.computer_id}<small>${n?esc(n.full_name)+" ("+esc(n.student_id)+")":"ไม่พบข้อมูลนักศึกษา"}</small></span><button data-del="${b.id}">ยกเลิก</button></li>`}).join(""):`<li class="empty" style="display:block">ไม่มีรายการเช่าในวันที่ ${nice(day)}</li>`}
+
+async function setDay(d){if(!d)return;day=d;$("day").value=d;say("msg","","");await loadDay()}
+$("day").onchange=()=>setDay($("day").value);
+const shift=n=>{const d=new Date(day+"T00:00");d.setDate(d.getDate()+n);return iso(d)};
+$("prev").onclick=()=>setDay(shift(-1));$("next").onclick=()=>setDay(shift(1));
+
+$("csv").onclick=()=>{
+if(!list.length){say("msg","err","ไม่มีรายการให้ดาวน์โหลด");return}
+const q=v=>'"'+String(v??"").replace(/"/g,'""')+'"';
+const rows=[["วันที่","เริ่ม","สิ้นสุด","เครื่อง","รหัสนักศึกษา","ชื่อ"]].concat(list.map(b=>{const n=names[b.user_id]||{};return[day,b.start_time.slice(0,5),b.end_time.slice(0,5),b.computer_id,n.student_id,n.full_name]}));
+const blob=new Blob(["\ufeff"+rows.map(r=>r.map(q).join(",")).join("\n")],{type:"text/csv;charset=utf-8"});
+const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="bookings-"+day+".csv";a.click();URL.revokeObjectURL(a.href)};
+
+async function loadOff(){
+const r=await sb.from("disabled_computers").select("computer_id");
+if(r.error){say("pmsg","err","โหลดสถานะเครื่องไม่สำเร็จ (รัน admin.sql แล้วหรือยัง?)");return}
+off=new Set((r.data||[]).map(x=>x.computer_id));drawPcs()}
+function drawPcs(){
+$("pcs").innerHTML=Array.from({length:24},(_,i)=>i+1).map(n=>`<button class="pc${off.has(n)?" off":""}" data-pc="${n}" aria-pressed="${off.has(n)}" aria-label="เครื่อง ${n} ${off.has(n)?"ปิดอยู่":"เปิดอยู่"}">${n}</button>`).join("")}
+
+async function loadClosed(){
+const r=await sb.from("closed_days").select("day,reason").gte("day",iso(new Date())).order("day");
+if(r.error){say("cmsg","err","โหลดวันปิดไม่สำเร็จ (รัน admin.sql แล้วหรือยัง?)");return}
+closed=r.data||[];
+$("closed").innerHTML=closed.length?closed.map(c=>`<li><span>${nice(c.day)}<small>${esc(c.reason||"ไม่ระบุเหตุผล")}</small></span><button data-cd="${c.day}">ลบ</button></li>`).join(""):`<li class="empty" style="display:block">ยังไม่มีวันปิดที่กำลังจะมาถึง</li>`;
+drawDay()}
+
+$("cadd").onclick=async()=>{
+const d=$("cd").value;if(!d){say("cmsg","err","เลือกวันที่ก่อน");return}
+const r=await sb.from("closed_days").upsert({day:d,reason:$("cr").value.trim()||null});
+if(r.error){say("cmsg","err","เพิ่มไม่สำเร็จ: "+r.error.message);return}
+$("cd").value="";$("cr").value="";say("cmsg","ok","เพิ่มวันปิดแล้ว");await loadClosed()};
+
+document.addEventListener("click",async e=>{
+const t=e.target.closest("button");if(!t||!ok)return;
+if(t.dataset.del){
+if(!confirm("ยกเลิกการเช่านี้ใช่หรือไม่?"))return;
+const r=await sb.from("bookings").delete().eq("id",t.dataset.del).select();
+if(r.error||!(r.data||[]).length)say("msg","err","ยกเลิกไม่สำเร็จ (ตรวจสิทธิ์แอดมินใน admin.sql)");
+else say("msg","ok","ยกเลิกการเช่าแล้ว");
+await loadDay()}
+else if(t.dataset.pc){
+const n=+t.dataset.pc,isOff=off.has(n);
+const r=isOff?await sb.from("disabled_computers").delete().eq("computer_id",n).select():await sb.from("disabled_computers").insert({computer_id:n}).select();
+if(r.error||!(r.data||[]).length)say("pmsg","err","เปลี่ยนสถานะไม่สำเร็จ");
+else say("pmsg","ok","เครื่อง "+n+(isOff?" เปิดใช้งานแล้ว":" ปิดใช้งานแล้ว"));
+await loadOff()}
+else if(t.dataset.cd){
+const r=await sb.from("closed_days").delete().eq("day",t.dataset.cd).select();
+say("cmsg",r.error||!(r.data||[]).length?"err":"ok",r.error||!(r.data||[]).length?"ลบไม่สำเร็จ":"ลบวันปิดแล้ว");
+await loadClosed()}});
+
+setInterval(()=>{if(ok)loadDay()},30000);
+(async()=>{const s=await sb.auth.getSession();if(s.data.session)await enter(s.data.session.user)})();
+</script>
+</body>
+</html>

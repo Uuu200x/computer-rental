@@ -74,7 +74,7 @@ input,select{border-radius:12px}
 <div class="bar" id="bar" hidden><span>สวัสดี <b id="who"></b></span><button class="link" id="out">ออกจากระบบ</button></div>
 </header>
 
-<section class="card login" id="login">
+<section class="card login" id="login" hidden>
 <div class="tabs"><button class="chip" id="tIn" aria-pressed="true">เข้าสู่ระบบ</button><button class="chip" id="tUp" aria-pressed="false">สมัครสมาชิก</button></div>
 <label id="nameRow" hidden>ชื่อ-นามสกุล<input id="name" autocomplete="name" placeholder="เช่น สมชาย ใจดี"></label>
 <label>รหัสนักศึกษา<input id="sid" inputmode="numeric" maxlength="11" placeholder="เช่น 6612345678"></label>
@@ -134,7 +134,7 @@ const say=(id,cls,t)=>{$(id).className="msg "+cls;$(id).textContent=t};
 const nowM=()=>{const n=new Date();return n.getHours()*60+n.getMinutes()};
 const isToday=()=>state.date===iso(new Date());
 
-if(SB_KEY==="PASTE_YOUR_KEY_HERE"){$("warn").hidden=false}else{sb=supabase.createClient(SB_URL,SB_KEY)}
+if(SB_KEY==="PASTE_YOUR_KEY_HERE"){$("warn").hidden=false}else{sb=supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}})}
 
 function startOpts(){const a=[];for(let m=OPEN;m<CLOSE;m+=STEP){if(isToday()&&m+STEP<=nowM())continue;a.push(m)}return a}
 function endOpts(s){const a=[];for(let m=s+STEP;m<=Math.min(CLOSE,s+MAXM);m+=STEP)a.push(m);return a}
@@ -271,7 +271,7 @@ else if(t.dataset.del){const r=await sb.from(TABLE.booking).delete().eq("id",t.d
 else if(t.id==="go")book()});
 
 setInterval(()=>{if(user)load()},20000);
-(async()=>{if(!sb)return;const s=await sb.auth.getSession();if(s.data.session)await enter(s.data.session.user)})();
+(async()=>{if(!sb){view();return}const {data,error}=await sb.auth.getSession();if(error){view();say("lmsg","err","ตรวจสอบสถานะเข้าสู่ระบบไม่สำเร็จ: "+error.message);return}if(data.session)await enter(data.session.user);else view()})();
 </script>
 </body>
 </html>

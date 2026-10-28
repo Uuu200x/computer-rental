@@ -174,14 +174,25 @@ if(p.error){say("lmsg","err","บันทึกโปรไฟล์ไม่�
 }catch(e){$("enter").disabled=false;say("lmsg","err","เชื่อมต่อไม่ได้: "+e.message);return}
 $("enter").disabled=false;
 if(r.error){say("lmsg","err",thErr(r.error));return}
-$("pw").value="";await enter(r.data.user)};
+$("pw").value="";await enter(r.data.user,sid)};
 
 $("out").onclick=async()=>{await sb.auth.signOut();user=null;state.pc=null;view()};
 
-async function enter(u){
-const p=await sb.from(TABLE.student).select("full_name,student_id").eq("id",u.id).maybeSingle();
+async function enter(u,loginSid){
 const md=u.user_metadata||{};
-user={id:u.id,name:(p.data&&p.data.full_name)||md.full_name||"นักศึกษา",sid:(p.data&&p.data.student_id)||md.student_id||""};
+const p=await sb.from(TABLE.student).select("full_name,student_id").eq("id",u.id).maybeSingle();
+if(p.error){user=null;view();say("lmsg","err","อ่านข้อมูลนักศึกษาไม่สำเร็จ: "+p.error.message);return}
+let profile=p.data;
+const emailSid=(u.email||"").match(/^(\d{8,11})@student\.labbooking\.com$/i);
+const sid=(emailSid&&emailSid[1])||md.student_id||loginSid||"";
+if(!profile){
+if(!sid){await sb.auth.signOut();user=null;view();say("lmsg","err","ไม่พบรหัสนักศึกษาในบัญชี กรุณาเข้าสู่ระบบใหม่ด้วยรหัสนักศึกษา");return}
+const fullName=md.full_name||("นักศึกษา "+sid);
+const created=await sb.from(TABLE.student).insert({id:u.id,student_id:sid,full_name:fullName});
+if(created.error){await sb.auth.signOut();user=null;view();say("lmsg","err","สร้างข้อมูลนักศึกษาไม่สำเร็จ: "+created.error.message);return}
+profile={full_name:fullName,student_id:sid}
+}
+user={id:u.id,name:profile.full_name||md.full_name||"นักศึกษา",sid:profile.student_id||sid};
 view();await load()}
 function view(){const on=!!user;$("login").hidden=on;$("app").hidden=!on;$("bar").hidden=!on;if(on)$("who").textContent=user.name+" ("+user.sid+")"}
 

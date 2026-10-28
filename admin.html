@@ -66,13 +66,7 @@ li button{border:0;background:none;font:inherit;color:var(--danger);cursor:point
 <ul id="pendingList"></ul>
 <p class="msg" id="pendingMsg" role="status"></p>
 </section>
-<h2>รายการเช่า</h2>
-<div class="tools">
-<button class="btn ghost" id="prev" aria-label="วันก่อนหน้า">ก่อนหน้า</button>
-<label>วันที่<input id="day" type="date"></label>
-<button class="btn ghost" id="next" aria-label="วันถัดไป">ถัดไป</button>
-<button class="btn" id="csv">ดาวน์โหลด CSV</button>
-</div>
+<h2>รายการเช่าวันนี้</h2>
 <div class="note" id="closedNote" hidden></div>
 <div class="stats"><div class="stat"><b id="sN">0</b>รายการ</div><div class="stat"><b id="sH">0</b>ชั่วโมงรวม</div><div class="stat"><b id="sP">0</b>เครื่องที่ถูกใช้</div></div>
 <ul id="list"></ul>
@@ -139,7 +133,7 @@ const a=await sb.from("admins").select("user_id").eq("user_id",u.id).maybeSingle
 if(a.error){await sb.auth.signOut();show(false);say("lmsg","err","ตรวจสิทธิ์แอดมินไม่สำเร็จ: "+a.error.message);return}
 if(!a.data){await sb.auth.signOut();show(false);say("lmsg","err","บัญชีนี้ไม่มีสิทธิ์แอดมิน (ตรวจว่าเพิ่มใน ตาราง admins แล้ว)");return}
 $("who").textContent=sid||(u.user_metadata&&u.user_metadata.student_id)||"";
-say("lmsg","","");show(true);$("day").value=day;await loadAll()}
+say("lmsg","","");show(true);await loadAll()}
 
 $("out").onclick=async()=>{await sb.auth.signOut();show(false)};
 
@@ -184,18 +178,6 @@ $("closedNote").hidden=!c;if(c)$("closedNote").textContent="วันนี้�
 $("list").innerHTML=list.length?list.map(b=>{const n=names[b.user_id];
 const status=b.status==="pending"?"รอแอดมินอนุมัติ":b.status==="approved"?"ยืนยันแล้ว":"ไม่อนุมัติ";
 return `<li><span><span class="t">${b.start_time.slice(0,5)}–${b.end_time.slice(0,5)}</span> เครื่อง ${b.computer_id}<small>${n?esc(n.full_name)+" ("+esc(n.student_id)+")":"ไม่พบข้อมูลนักศึกษา"} · ${status}</small></span><button data-del="${b.id}">ยกเลิก</button></li>`}).join(""):`<li class="empty" style="display:block">ไม่มีรายการเช่าในวันที่ ${nice(day)}</li>`}
-
-async function setDay(d){if(!d)return;day=d;$("day").value=d;say("msg","","");await loadDay()}
-$("day").onchange=()=>setDay($("day").value);
-const shift=n=>{const d=new Date(day+"T00:00");d.setDate(d.getDate()+n);return iso(d)};
-$("prev").onclick=()=>setDay(shift(-1));$("next").onclick=()=>setDay(shift(1));
-
-$("csv").onclick=()=>{
-if(!list.length){say("msg","err","ไม่มีรายการให้ดาวน์โหลด");return}
-const q=v=>'"'+String(v??"").replace(/"/g,'""')+'"';
-const rows=[["วันที่","เริ่ม","สิ้นสุด","เครื่อง","รหัสนักศึกษา","ชื่อ"]].concat(list.map(b=>{const n=names[b.user_id]||{};return[day,b.start_time.slice(0,5),b.end_time.slice(0,5),b.computer_id,n.student_id,n.full_name]}));
-const blob=new Blob(["\ufeff"+rows.map(r=>r.map(q).join(",")).join("\n")],{type:"text/csv;charset=utf-8"});
-const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="bookings-"+day+".csv";a.click();URL.revokeObjectURL(a.href)};
 
 async function loadOff(){
 const r=await sb.from("disabled_computers").select("computer_id");

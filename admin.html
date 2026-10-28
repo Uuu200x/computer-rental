@@ -7,9 +7,7 @@
 <title>แอดมิน · ห้องปฏิบัติการที่ T310</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<style>
-:root{--bg:#EDF1F6;--surface:#fff;--ink:#14233A;--muted:#5B6B80;--line:#D5DDE7;--free:#1F8A70;--free-bg:#E3F4EE;--off:#F8DDD9;--accent:#14233A;--accent-ink:#fff;--danger:#C0392B;--mine:#3B5BDB;color-scheme:light}
-@media (prefers-color-scheme:dark){:root{--bg:#0E1622;--surface:#16212F;--ink:#E7EDF5;--muted:#93A3B8;--line:#2A3849;--free:#4CC9A6;--free-bg:#173A33;--off:#4A2420;--accent:#E7EDF5;--accent-ink:#0E1622;--danger:#FF8A7A;--mine:#7C95FF;color-scheme:dark}}
+<style>:root{--bg:#F1F6F0;--surface:#FCFEFB;--ink:#2D4032;--muted:#6B7D6C;--line:#DCE7DA;--free:#3D8060;--free-bg:#E5F1E7;--taken:#DCE4DD;--taken-ink:#657367;--unavailable:#F7E8E4;--sel:#F3D58D;--mine:#5C8B6E;--accent:#5C8B6E;--accent-hover:#4B785D;--accent-ink:#fff;--danger:#B85D55;--off:#F6E4E1;color-scheme:light}
 *{box-sizing:border-box}[hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans Thai",system-ui,sans-serif;line-height:1.6;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
 .wrap{max-width:1040px;margin:0 auto;padding:20px 16px 48px}
@@ -41,6 +39,19 @@ li button{border:0;background:none;font:inherit;color:var(--danger);cursor:point
 .pc.off{border-color:var(--danger);background:var(--off);text-decoration:line-through}
 .note{background:#FFF3CD;color:#5B4500;padding:10px 14px;border-radius:10px;margin-bottom:12px;font-size:.9rem}
 :focus-visible{outline:3px solid var(--mine);outline-offset:2px}
+
+body{background:linear-gradient(180deg,#F7FAF5 0%,var(--bg) 100%)}
+h1{color:var(--accent)}
+.card{border-radius:18px;box-shadow:0 8px 24px rgba(57,91,64,.07)}
+.bar{border-radius:15px}
+.chip{border-radius:14px}
+.btn{border-radius:14px;transition:background-color .16s ease,transform .16s ease}
+.btn:hover:not(:disabled){background:var(--accent-hover);transform:translateY(-1px)}
+.btn.ghost:hover:not(:disabled){background:var(--free-bg)}
+.pc{border-radius:12px}
+li{border-radius:13px;background:var(--surface)}
+.note,.warn{background:#F5F1DF;color:#625A3A;border-radius:13px}
+input,select{border-radius:12px}
 </style>
 </head>
 <body>

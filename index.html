@@ -65,6 +65,9 @@ input,select{border-radius:12px}
 .mine-actions button[data-checkin],.mine-actions button[data-checkout]{background:var(--accent);color:var(--accent-ink);border-radius:10px;padding:6px 10px}
 .time-alert{background:#FFF0D2;color:#664C12;border:1px solid #E8D59A;border-radius:13px;padding:10px 14px;margin:0}
 .countdown{display:block;color:var(--accent);font-weight:700;margin-top:2px}
+.modal-backdrop{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(33,52,37,.46)}
+.modal-card{width:min(100%,440px);padding:24px;background:var(--surface);border:1px solid var(--line);border-radius:20px;box-shadow:0 20px 60px rgba(33,52,37,.22)}
+.modal-card h2{font-size:1.25rem;margin:0 0 8px}.modal-card p{margin:0 0 18px}.modal-state{color:var(--accent);font-weight:700;font-size:.9rem}
 </style>
 </head>
 <body>
@@ -118,6 +121,14 @@ input,select{border-radius:12px}
 </section>
 </aside>
 </div>
+<div class="modal-backdrop" id="bookingModal" role="presentation" hidden>
+<section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="bookingModalTitle" aria-describedby="bookingModalDetail">
+<p class="modal-state" id="bookingModalState">ส่งคำขอแล้ว</p>
+<h2 id="bookingModalTitle">กำลังรอแอดมินยืนยันการเช่า</h2>
+<p id="bookingModalDetail"></p>
+<button class="btn" id="bookingModalClose" type="button">ปิดหน้าต่าง</button>
+</section>
+</div>
 </div>
 
 <script>
@@ -125,7 +136,7 @@ const SB_URL="https://mqdlozxpfnmmvjybzjga.supabase.co";
 const SB_KEY="sb_publishable_JG5pC_vBKMoZSBIb7s_VJA_JwZYurqi";
 
 const $=id=>document.getElementById(id);
-const OPEN=9*60,CLOSE=17*60,STEP=30,MAXM=240;
+const OPEN=9*60,CLOSE=17*60,STEP=15,MAXM=240;
 const iso=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
 const nice=s=>new Date(s+"T00:00").toLocaleDateString("th-TH",{weekday:"short",day:"numeric",month:"short"});
 const clock=s=>new Date(s).toLocaleTimeString("th-TH",{timeZone:"Asia/Bangkok",hour:"2-digit",minute:"2-digit"});
@@ -134,10 +145,27 @@ const mins=t=>+t.slice(0,2)*60+ +t.slice(3,5);
 const em=s=>s+"@student.labbooking.com";
 const DAYS=(()=>{const a=[],n=new Date();for(let i=0;a.length<7;i++){const d=new Date(n.getFullYear(),n.getMonth(),n.getDate()+i);if(d.getDay()!==0&&d.getDay()!==6)a.push(iso(d))}return a})();
 const TABLE={student:"students",computer:"computers",booking:"bookings"};
-let sb=null,user=null,mode="in",rows=[],mine=[],computers=[],disabledComputers=new Set(),state={date:DAYS[0],start:null,end:null,pc:null};
+let sb=null,user=null,mode="in",rows=[],mine=[],computers=[],disabledComputers=new Set(),modalRequestKey="",modalOpen=false,state={date:DAYS[0],start:null,end:null,pc:null};
 const say=(id,cls,t)=>{$(id).className="msg "+cls;$(id).textContent=t};
 const nowM=()=>{const n=new Date();return n.getHours()*60+n.getMinutes()};
 const isToday=()=>state.date===iso(new Date());
+const requestKey=b=>[b.book_date,b.computer_id,b.start_time.slice(0,5),b.end_time.slice(0,5)].join("|");
+const noShowDeadline=b=>new Date(b.book_date+"T"+b.start_time.slice(0,8)+"+07:00").getTime()+20*60*1000;
+const isNoShowBooking=b=>b.status==="no_show"||(b.status==="approved"&&!b.checked_in_at&&Date.now()>=noShowDeadline(b));
+function closeBookingModal(){modalOpen=false;$("bookingModal").hidden=true}
+function syncBookingModal(){
+if(!modalOpen||!modalRequestKey)return;
+const b=mine.find(x=>requestKey(x)===modalRequestKey);if(!b)return;
+const title=$("bookingModalTitle"),detail=$("bookingModalDetail"),stateLabel=$("bookingModalState");
+const when=nice(b.book_date)+" เวลา "+b.start_time.slice(0,5)+"–"+b.end_time.slice(0,5)+" เครื่อง "+b.computer_id;
+if(b.status==="pending"){stateLabel.textContent="ส่งคำขอแล้ว";title.textContent="กำลังรอแอดมินยืนยันการเช่า";detail.textContent=when+" · รอการอนุมัติก่อนจึงจะเช็กอินใช้งานได้"}
+else if(b.status==="approved"&&!isNoShowBooking(b)){stateLabel.textContent="อัปเดตคำขอแล้ว";title.textContent="แอดมินอนุมัติการเช่าแล้ว";detail.textContent=when+" · เช็กอินได้เมื่อถึงเวลาเริ่มใช้"}
+else if(isNoShowBooking(b)){stateLabel.textContent="หมดเวลารอเช็กอิน";title.textContent="เครื่องเปิดให้ผู้อื่นจองแล้ว";detail.textContent=when+" · ไม่มีการเช็กอินภายใน 20 นาทีหลังเวลาเริ่ม"}
+else{stateLabel.textContent="อัปเดตคำขอแล้ว";title.textContent="คำขอเช่านี้ไม่ได้รับการอนุมัติ";detail.textContent=when}
+}
+$("bookingModalClose").onclick=closeBookingModal;
+$("bookingModal").onclick=e=>{if(e.target===$("bookingModal"))closeBookingModal()};
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&modalOpen)closeBookingModal()});
 const ALERT_BEFORE_MS=10*60*1000;
 const alertedBookings=new Set();
 const bookingEndMs=b=>new Date(b.book_date+"T"+b.end_time.slice(0,8)+"+07:00").getTime();
@@ -164,7 +192,7 @@ const box=$("timeAlert");box.hidden=!alerts.length;box.textContent=alerts.length
 
 if(SB_KEY==="PASTE_YOUR_KEY_HERE"){$("warn").hidden=false}else{sb=supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}})}
 
-function startOpts(){const a=[];for(let m=OPEN;m<CLOSE;m+=STEP){if(isToday()&&m+STEP<=nowM())continue;a.push(m)}return a}
+function startOpts(){const a=[];for(let m=OPEN;m<CLOSE;m+=STEP){if(isToday()&&m<=nowM())continue;a.push(m)}return a}
 function endOpts(s){const a=[];for(let m=s+STEP;m<=Math.min(CLOSE,s+MAXM);m+=STEP)a.push(m);return a}
 function fixTimes(){
 const so=startOpts();
@@ -269,24 +297,31 @@ h+="</div>"}
 $("rows").innerHTML=h||'<p class="msg">ยังไม่มีเครื่องที่เปิดให้เช่า</p>';
 $("sum").innerHTML=none?"วันนี้หมดเวลาเช่าแล้ว เลือกวันอื่น":state.pc?`<b>เครื่อง ${state.pc}</b><br>${nice(state.date)} เวลา ${hm(state.start)}–${hm(state.end)} (${(state.end-state.start)/60} ชั่วโมง)`:`เลือกเครื่องสำหรับเวลา ${hm(state.start)}–${hm(state.end)}`;
 $("go").disabled=!state.pc;
-$("next").textContent=mine.length?`เช่าไว้ ${mine.length} รายการ (รวมไม่เกิน 4 ชั่วโมงต่อวัน)`:"ยังไม่มีรายการเช่าที่กำลังจะมาถึง";
+const currentBookings=mine.filter(b=>b.status==="pending"||(b.status==="approved"&&!isNoShowBooking(b)));
+$("next").textContent=currentBookings.length?`เช่าไว้ ${currentBookings.length} รายการ (รวมไม่เกิน 4 ชั่วโมงต่อวัน)`:"ยังไม่มีรายการเช่าที่กำลังจะมาถึง";
 $("mine").innerHTML=mine.map(b=>{
-const status=b.status==="pending"?"รอแอดมินอนุมัติ":b.status==="approved"?"ยืนยันแล้ว":"ไม่อนุมัติ";
-const progress=b.status!=="approved"?"":b.checked_out_at?"ใช้งานเสร็จแล้ว · เช็คอิน "+clock(b.checked_in_at)+" · เช็คเอาท์ "+clock(b.checked_out_at):b.checked_in_at?"กำลังใช้งาน · เช็คอิน "+clock(b.checked_in_at):"ยังไม่เช็คอิน";
-const canCancel=!b.checked_in_at&&!b.checked_out_at&&(b.status==="pending"||b.status==="approved");
-const action=b.status==="approved"?(b.checked_out_at?"<small>ใช้งานเสร็จแล้ว</small>":b.checked_in_at?'<button data-checkout="'+b.id+'">เช็คเอาท์</button>':'<button data-checkin="'+b.id+'">เช็คอิน</button>'):"";
+const noShow=isNoShowBooking(b);
+const status=b.status==="pending"?"รอแอดมินอนุมัติ":noShow?"ไม่เช็กอินภายใน 20 นาที · เปิดให้จองแล้ว":b.status==="approved"?"ยืนยันแล้ว":"ไม่อนุมัติ";
+const progress=noShow?"":b.status!=="approved"?"":b.checked_out_at?"ใช้งานเสร็จแล้ว · เช็คอิน "+clock(b.checked_in_at)+" · เช็คเอาท์ "+clock(b.checked_out_at):b.checked_in_at?"กำลังใช้งาน · เช็คอิน "+clock(b.checked_in_at):"ยังไม่เช็คอิน";
+const canCancel=!noShow&&!b.checked_in_at&&!b.checked_out_at&&(b.status==="pending"||b.status==="approved");
+const action=b.status==="approved"&&!noShow?(b.checked_out_at?"<small>ใช้งานเสร็จแล้ว</small>":b.checked_in_at?'<button data-checkout="'+b.id+'">เช็คเอาท์</button>':'<button data-checkin="'+b.id+'">เช็คอิน</button>'):"";
 const countdown=b.status==="approved"&&b.checked_in_at&&!b.checked_out_at?'<small class="countdown" data-countdown="'+b.id+'"></small>':"";
 return "<li><span>เครื่อง "+b.computer_id+" · "+nice(b.book_date)+" "+b.start_time.slice(0,5)+"–"+b.end_time.slice(0,5)+"<small>"+status+(progress?" · "+progress:"")+"</small>"+countdown+"</span><span class=\"mine-actions\">"+action+(canCancel?'<button data-del="'+b.id+'">ยกเลิก</button>':"")+"</span></li>"
-}).join("");updateCountdowns()}
+}).join("");updateCountdowns();syncBookingModal()}
 
 async function book(){
 const dur=state.end-state.start;
-const used=mine.filter(b=>b.book_date===state.date&&b.status!=="declined").reduce((s,b)=>s+mins(b.end_time)-mins(b.start_time),0);
+const used=mine.filter(b=>b.book_date===state.date&&b.status!=="declined"&&!isNoShowBooking(b)).reduce((s,b)=>s+mins(b.end_time)-mins(b.start_time),0);
 if(used+dur>MAXM){say("msg","err","เช่าได้รวมไม่เกิน 4 ชั่วโมงต่อวัน (วันนี้เช่าไปแล้ว "+used/60+" ชั่วโมง)");return}
+const requested={book_date:state.date,computer_id:state.pc,start_time:hm(state.start),end_time:hm(state.end)};
 $("go").disabled=true;
-const r=await sb.from(TABLE.booking).insert({computer_id:state.pc,book_date:state.date,start_time:hm(state.start),end_time:hm(state.end),status:"pending"});
+const r=await sb.from(TABLE.booking).insert({...requested,status:"pending"});
 if(r.error)say("msg","err",r.error.code==="23P01"?"ช่วงเวลานี้มีคำขอหรือรายการเช่าอยู่แล้ว เลือกเครื่องหรือเวลาอื่น":"ส่งคำขอไม่สำเร็จ: "+r.error.message);
-else say("msg","ok","ส่งคำขอเช่าเครื่อง "+state.pc+" แล้ว กรุณารอแอดมินอนุมัติ");
+else{
+say("msg","ok","ส่งคำขอแล้ว");modalRequestKey=requestKey(requested);modalOpen=true;$("bookingModal").hidden=false;
+$("bookingModalState").textContent="ส่งคำขอแล้ว";$("bookingModalTitle").textContent="กำลังรอแอดมินยืนยันการเช่า";
+$("bookingModalDetail").textContent=nice(requested.book_date)+" เวลา "+requested.start_time+"–"+requested.end_time+" เครื่อง "+requested.computer_id+" · รอการอนุมัติก่อนจึงจะเช็กอินใช้งานได้";
+}
 state.pc=null;await load()}
 
 document.addEventListener("click",async e=>{
@@ -298,7 +333,7 @@ const isIn=!!t.dataset.checkin,id=t.dataset.checkin||t.dataset.checkout;
 const r=await sb.rpc(isIn?"booking_check_in":"booking_check_out",{p_booking_id:id});
 if(r.error){
 const m=r.error.message||"";
-const msg=m.includes("booking_not_eligible_for_check_in")?"เช็คอินได้เฉพาะรายการที่อนุมัติและอยู่ในช่วงเวลาเช่า":m.includes("booking_not_eligible_for_check_out")?"รายการนี้ยังเช็คเอาท์ไม่ได้ หรือเช็คเอาท์ไปแล้ว":m;
+const msg=m.includes("booking_not_eligible_for_check_in")?"เช็คอินได้เฉพาะรายการที่อนุมัติ และภายใน 20 นาทีหลังเวลาเริ่ม":m.includes("booking_not_eligible_for_check_out")?"รายการนี้ยังเช็คเอาท์ไม่ได้ หรือเช็คเอาท์ไปแล้ว":m;
 say("msg","err","บันทึกเวลาไม่สำเร็จ: "+msg);
 }else say("msg","ok",isIn?"เช็คอินแล้ว เวลา "+clock(r.data):"เช็คเอาท์แล้ว เวลา "+clock(r.data));
 await load()}

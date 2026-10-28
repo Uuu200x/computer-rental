@@ -63,6 +63,8 @@ li{border-radius:13px;background:var(--surface)}
 input,select{border-radius:12px}
 .mine-actions{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:wrap}
 .mine-actions button[data-checkin],.mine-actions button[data-checkout]{background:var(--accent);color:var(--accent-ink);border-radius:10px;padding:6px 10px}
+.time-alert{background:#FFF0D2;color:#664C12;border:1px solid #E8D59A;border-radius:13px;padding:10px 14px;margin:0}
+.countdown{display:block;color:var(--accent);font-weight:700;margin-top:2px}
 </style>
 </head>
 <body>
@@ -100,6 +102,7 @@ input,select{border-radius:12px}
 <div class="room"><div class="board"><div class="front">หน้าห้อง / โต๊ะอาจารย์</div><div class="rows" id="rows"></div></div></div>
 </main>
 <aside class="side">
+<p class="time-alert" id="timeAlert" role="status" aria-live="polite" hidden></p>
 <section class="card">
 <h2>ยืนยันการเช่า</h2>
 <p class="sum" id="sum">ยังไม่ได้เลือกเครื่อง</p>
@@ -109,6 +112,8 @@ input,select{border-radius:12px}
 <section class="card">
 <h2>รายการเช่าเครื่องของฉัน</h2>
 <p class="sum" id="next"></p>
+<button class="link" id="notifyEnable" type="button" hidden>เปิดแจ้งเตือนบนอุปกรณ์</button>
+<p class="msg" id="notifyMsg" role="status" hidden></p>
 <ul id="mine"></ul>
 </section>
 </aside>
@@ -133,6 +138,29 @@ let sb=null,user=null,mode="in",rows=[],mine=[],computers=[],disabledComputers=n
 const say=(id,cls,t)=>{$(id).className="msg "+cls;$(id).textContent=t};
 const nowM=()=>{const n=new Date();return n.getHours()*60+n.getMinutes()};
 const isToday=()=>state.date===iso(new Date());
+const ALERT_BEFORE_MS=10*60*1000;
+const alertedBookings=new Set();
+const bookingEndMs=b=>new Date(b.book_date+"T"+b.end_time.slice(0,8)+"+07:00").getTime();
+const fmtRemaining=ms=>{const n=Math.max(0,Math.floor(ms/1000)),h=Math.floor(n/3600),m=Math.floor(n%3600/60),s=n%60;return [h,m,s].map(x=>String(x).padStart(2,"0")).join(":")};
+function wasAlerted(id){if(alertedBookings.has(String(id)))return true;try{return localStorage.getItem("t310-time-alert-"+id)==="1"}catch{return false}}
+function markAlerted(id){alertedBookings.add(String(id));try{localStorage.setItem("t310-time-alert-"+id,"1")}catch{}}
+function updateCountdowns(){
+const alerts=[];
+document.querySelectorAll("[data-countdown]").forEach(el=>{
+const b=mine.find(x=>String(x.id)===el.dataset.countdown);if(!b)return;
+const left=bookingEndMs(b)-Date.now();
+if(left<=0){el.textContent="หมดเวลาแล้ว · กรุณาเช็กเอาต์";alerts.push("เครื่อง "+b.computer_id+" ถึงเวลาสิ้นสุดแล้ว กรุณาเช็กเอาต์");return}
+el.textContent="เวลาคงเหลือ "+fmtRemaining(left);
+if(left<=ALERT_BEFORE_MS){
+alerts.push("เครื่อง "+b.computer_id+" เหลือ "+fmtRemaining(left));
+if(!wasAlerted(b.id)){
+markAlerted(b.id);
+if("Notification" in window&&Notification.permission==="granted"){try{new Notification("ใกล้หมดเวลาใช้งานเครื่อง",{body:"เครื่อง "+b.computer_id+" เหลือ "+fmtRemaining(left)+" กรุณาเตรียมเช็กเอาต์"})}catch{}}
+}
+}
+});
+const box=$("timeAlert");box.hidden=!alerts.length;box.textContent=alerts.length?"แจ้งเตือนเวลาใช้งาน: "+alerts.join(" · "):"";
+}
 
 if(SB_KEY==="PASTE_YOUR_KEY_HERE"){$("warn").hidden=false}else{sb=supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}})}
 
@@ -177,6 +205,12 @@ if(r.error){say("lmsg","err",thErr(r.error));return}
 $("pw").value="";await enter(r.data.user,sid)};
 
 $("out").onclick=async()=>{await sb.auth.signOut();user=null;state.pc=null;view()};
+if("Notification" in window)$("notifyEnable").hidden=Notification.permission!=="default";
+$("notifyEnable").onclick=async()=>{
+if(!("Notification" in window)){say("notifyMsg","err","เบราว์เซอร์นี้ไม่รองรับการแจ้งเตือน");$("notifyMsg").hidden=false;return}
+try{const permission=await Notification.requestPermission();$("notifyEnable").hidden=true;if(permission==="granted")say("notifyMsg","ok","เปิดแจ้งเตือนก่อนหมดเวลาแล้ว");else{say("notifyMsg","err","ไม่ได้รับอนุญาตให้แจ้งเตือนบนอุปกรณ์ แต่การเตือนในหน้านี้ยังทำงานอยู่");}$("notifyMsg").hidden=false}
+catch(e){say("notifyMsg","err","เปิดแจ้งเตือนไม่สำเร็จ แต่การเตือนในหน้านี้ยังทำงานอยู่");$("notifyMsg").hidden=false}
+};
 
 async function enter(u,loginSid){
 const md=u.user_metadata||{};
@@ -241,8 +275,9 @@ const status=b.status==="pending"?"รอแอดมินอนุมัติ
 const progress=b.status!=="approved"?"":b.checked_out_at?"ใช้งานเสร็จแล้ว · เช็คอิน "+clock(b.checked_in_at)+" · เช็คเอาท์ "+clock(b.checked_out_at):b.checked_in_at?"กำลังใช้งาน · เช็คอิน "+clock(b.checked_in_at):"ยังไม่เช็คอิน";
 const canCancel=!b.checked_in_at&&!b.checked_out_at&&(b.status==="pending"||b.status==="approved");
 const action=b.status==="approved"?(b.checked_out_at?"<small>ใช้งานเสร็จแล้ว</small>":b.checked_in_at?'<button data-checkout="'+b.id+'">เช็คเอาท์</button>':'<button data-checkin="'+b.id+'">เช็คอิน</button>'):"";
-return "<li><span>เครื่อง "+b.computer_id+" · "+nice(b.book_date)+" "+b.start_time.slice(0,5)+"–"+b.end_time.slice(0,5)+"<small>"+status+(progress?" · "+progress:"")+"</small></span><span class=\"mine-actions\">"+action+(canCancel?'<button data-del="'+b.id+'">ยกเลิก</button>':"")+"</span></li>"
-}).join("")}
+const countdown=b.status==="approved"&&b.checked_in_at&&!b.checked_out_at?'<small class="countdown" data-countdown="'+b.id+'"></small>':"";
+return "<li><span>เครื่อง "+b.computer_id+" · "+nice(b.book_date)+" "+b.start_time.slice(0,5)+"–"+b.end_time.slice(0,5)+"<small>"+status+(progress?" · "+progress:"")+"</small>"+countdown+"</span><span class=\"mine-actions\">"+action+(canCancel?'<button data-del="'+b.id+'">ยกเลิก</button>':"")+"</span></li>"
+}).join("");updateCountdowns()}
 
 async function book(){
 const dur=state.end-state.start;
@@ -271,6 +306,7 @@ else if(t.dataset.del){const r=await sb.from(TABLE.booking).delete().eq("id",t.d
 else if(t.id==="go")book()});
 
 setInterval(()=>{if(user)load()},20000);
+setInterval(updateCountdowns,1000);
 (async()=>{if(!sb){view();return}const {data,error}=await sb.auth.getSession();if(error){view();say("lmsg","err","ตรวจสอบสถานะเข้าสู่ระบบไม่สำเร็จ: "+error.message);return}if(data.session)await enter(data.session.user);else view()})();
 </script>
 </body>

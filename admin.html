@@ -195,7 +195,7 @@ $("list").innerHTML=list.length?list.map(b=>{const n=names[b.user_id];
 const status=b.status==="pending"?"รอแอดมินอนุมัติ":b.status==="approved"?"ยืนยันแล้ว":"ไม่อนุมัติ";
 const checks=b.checked_in_at?" · เช็คอิน "+clock(b.checked_in_at):" · ยังไม่เช็คอิน";
 const out=b.checked_out_at?" · เช็คเอาท์ "+clock(b.checked_out_at):"";
-return `<li><span><span class="t">${b.start_time.slice(0,5)}–${b.end_time.slice(0,5)}</span> เครื่อง ${b.computer_id}<small>${n?esc(n.full_name)+" ("+esc(n.student_id)+")":"ไม่พบข้อมูลนักศึกษา"} · ${status}${b.status==="approved"?checks+out:""}</small></span><button data-del="${b.id}">ยกเลิก</button></li>`</li>`}).join(""):`<li class="empty" style="display:block">ไม่มีรายการเช่าในวันที่ ${nice(day)}</li>`}
+return `<li><span><span class="t">${b.start_time.slice(0,5)}–${b.end_time.slice(0,5)}</span> เครื่อง ${b.computer_id}<small>${n?esc(n.full_name)+" ("+esc(n.student_id)+")":"ไม่พบข้อมูลนักศึกษา"} · ${status}${b.status==="approved"?checks+out:""}</small></span><button data-del="${b.id}">ยกเลิก</button></li>`}).join(""):`<li class="empty" style="display:block">ไม่มีรายการเช่าในวันที่ ${nice(day)}</li>`}
 
 async function loadOff(){
 const r=await sb.from("disabled_computers").select("computer_id");

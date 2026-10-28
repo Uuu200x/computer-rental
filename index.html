@@ -38,6 +38,7 @@ label{display:block;font-size:.9rem;margin-bottom:10px;font-weight:500}
 input,select{display:block;width:100%;margin-top:4px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font:inherit;background:var(--surface);color:var(--ink)}
 .btn{width:100%;padding:12px;border:0;border-radius:10px;background:var(--accent);color:var(--accent-ink);font:inherit;font-weight:600;cursor:pointer}
 .btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.secondary{margin-top:8px;background:var(--free-bg);color:var(--accent)}
 .msg{min-height:1.4em;margin:10px 0 0;font-size:.9rem}.msg.err{color:var(--danger)}.msg.ok{color:var(--free)}
 ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 li{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:.9rem}
@@ -110,6 +111,7 @@ input,select{border-radius:12px}
 <h2>ยืนยันการเช่า</h2>
 <p class="sum" id="sum">ยังไม่ได้เลือกเครื่อง</p>
 <button class="btn" id="go" disabled>เช่าเครื่อง</button>
+<button class="btn secondary" id="walkin" type="button">เข้าใช้ตอนนี้</button>
 <p class="msg" id="msg" role="status"></p>
 </section>
 <section class="card">
@@ -129,6 +131,18 @@ input,select{border-radius:12px}
 <button class="btn" id="bookingModalClose" type="button">ปิดหน้าต่าง</button>
 </section>
 </div>
+<div class="modal-backdrop" id="walkinModal" role="presentation" hidden>
+<section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="walkinTitle" aria-describedby="walkinDetail">
+<p class="modal-state">คำขอเข้าใช้ทันที</p>
+<h2 id="walkinTitle">เลือกเครื่องและเวลาเลิกใช้</h2>
+<p id="walkinDetail">เลือกเครื่องที่ว่างและเวลาสิ้นสุด คำขอจะเริ่มหลังแอดมินอนุมัติ</p>
+<label>เครื่อง<select id="walkinPc"></select></label>
+<label>ต้องการใช้ถึง<select id="walkinEnd"></select></label>
+<button class="btn" id="walkinSubmit" type="button">ส่งคำขอเข้าใช้</button>
+<button class="link" id="walkinClose" type="button">ยกเลิก</button>
+<p class="msg" id="walkinMsg" role="status"></p>
+</section>
+</div>
 </div>
 
 <script>
@@ -145,14 +159,14 @@ const mins=t=>+t.slice(0,2)*60+ +t.slice(3,5);
 const em=s=>s+"@student.labbooking.com";
 const DAYS=(()=>{const a=[],n=new Date();for(let i=0;a.length<7;i++){const d=new Date(n.getFullYear(),n.getMonth(),n.getDate()+i);if(d.getDay()!==0&&d.getDay()!==6)a.push(iso(d))}return a})();
 const TABLE={student:"students",computer:"computers",booking:"bookings"};
-let sb=null,user=null,mode="in",rows=[],mine=[],computers=[],disabledComputers=new Set(),modalRequestKey="",modalOpen=false,state={date:DAYS[0],start:null,end:null,pc:null};
+let sb=null,user=null,mode="in",rows=[],mine=[],computers=[],disabledComputers=new Set(),modalRequestKey="",modalOpen=false,walkinStart=null,state={date:DAYS[0],start:null,end:null,pc:null};
 const say=(id,cls,t)=>{$(id).className="msg "+cls;$(id).textContent=t};
 const nowM=()=>{const n=new Date();return n.getHours()*60+n.getMinutes()};
 const isToday=()=>state.date===iso(new Date());
 const requestKey=b=>[b.book_date,b.computer_id,b.start_time.slice(0,5),b.end_time.slice(0,5)].join("|");
 const noShowDeadline=b=>new Date(b.book_date+"T"+b.start_time.slice(0,8)+"+07:00").getTime()+20*60*1000;
 const isNoShowBooking=b=>b.status==="no_show"||(b.status==="approved"&&!b.checked_in_at&&Date.now()>=noShowDeadline(b));
-function closeBookingModal(){modalOpen=false;$("bookingModal").hidden=true}
+function closeBookingModal(){modalOpen=false;modalRequestKey="";$("bookingModal").hidden=true}
 function syncBookingModal(){
 if(!modalOpen||!modalRequestKey)return;
 const b=mine.find(x=>requestKey(x)===modalRequestKey);if(!b)return;
@@ -165,7 +179,10 @@ else{stateLabel.textContent="อัปเดตคำขอแล้ว";title.t
 }
 $("bookingModalClose").onclick=closeBookingModal;
 $("bookingModal").onclick=e=>{if(e.target===$("bookingModal"))closeBookingModal()};
-document.addEventListener("keydown",e=>{if(e.key==="Escape"&&modalOpen)closeBookingModal()});
+function closeWalkinModal(){$("walkinModal").hidden=true}
+$("walkinClose").onclick=closeWalkinModal;
+$("walkinModal").onclick=e=>{if(e.target===$("walkinModal"))closeWalkinModal()};
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&modalOpen)closeBookingModal();if(e.key==="Escape"&&!$("walkinModal").hidden)closeWalkinModal()});
 const ALERT_BEFORE_MS=10*60*1000;
 const alertedBookings=new Set();
 const bookingEndMs=b=>new Date(b.book_date+"T"+b.end_time.slice(0,8)+"+07:00").getTime();
@@ -194,6 +211,7 @@ if(SB_KEY==="PASTE_YOUR_KEY_HERE"){$("warn").hidden=false}else{sb=supabase.creat
 
 function startOpts(){const a=[];for(let m=OPEN;m<CLOSE;m+=STEP){if(isToday()&&m<=nowM())continue;a.push(m)}return a}
 function endOpts(s){const a=[];for(let m=s+STEP;m<=Math.min(CLOSE,s+MAXM);m+=STEP)a.push(m);return a}
+function walkinEndOpts(s){const a=[];for(let m=Math.floor((s+1)/STEP)*STEP;m<=Math.min(CLOSE,s+MAXM);m+=STEP)if(m>s)a.push(m);return a}
 function fixTimes(){
 const so=startOpts();
 if(!so.length){state.start=null;state.end=null;return}
@@ -324,9 +342,47 @@ $("bookingModalDetail").textContent=nice(requested.book_date)+" เวลา "+r
 }
 state.pc=null;await load()}
 
+function walkinAvailable(pc,end){
+return !disabledComputers.has(+pc)&&!rows.some(b=>b.computer_id===+pc&&mins(b.start_time)<end&&mins(b.end_time)>walkinStart)
+}
+function drawWalkinComputers(){
+const end=+$("walkinEnd").value;
+const available=computers.filter(c=>walkinAvailable(c.id,end));
+$("walkinPc").innerHTML=available.length?available.map(c=>`<option value="${c.id}">เครื่อง ${c.id} · ว่าง</option>`).join(""):'<option value="">ไม่มีเครื่องว่างในช่วงเวลานี้</option>';
+$("walkinSubmit").disabled=!available.length;
+}
+async function openWalkin(){
+const today=iso(new Date()),start=nowM();
+if(start<OPEN||start>=CLOSE){say("msg","err","เข้าใช้ตอนนี้ได้ในช่วงเวลา 09:00–17:00");return}
+walkinStart=start;state.date=today;state.pc=null;await load();
+const ends=walkinEndOpts(start);
+if(!ends.length){say("msg","err","วันนี้ไม่มีเวลาเหลือให้เลือกแล้ว");return}
+$("walkinEnd").innerHTML=ends.map(m=>`<option value="${m}">${hm(m)}</option>`).join("");
+const defaultEnd=ends.find(m=>m>=start+60)||ends[ends.length-1];$("walkinEnd").value=String(defaultEnd);
+$("walkinMsg").textContent="";$("walkinDetail").textContent="เริ่มขอใช้ตั้งแต่ "+hm(start)+" เลือกเวลาสิ้นสุด คำขอจะเริ่มใช้งานได้หลังแอดมินอนุมัติ และต้องเช็กอินภายใน 20 นาทีหลังเวลาเริ่ม";
+drawWalkinComputers();$("walkinModal").hidden=false;$("walkinEnd").onchange=drawWalkinComputers;
+}
+async function submitWalkin(){
+const pc=+$("walkinPc").value,end=+$("walkinEnd").value,today=iso(new Date()),dur=end-walkinStart;
+if(!pc||!walkinAvailable(pc,end)){say("walkinMsg","err","เครื่องนี้ไม่ว่างแล้ว กรุณาเลือกเครื่องอื่น");await load();drawWalkinComputers();return}
+const used=mine.filter(b=>b.book_date===today&&b.status!=="declined"&&!isNoShowBooking(b)).reduce((s,b)=>s+mins(b.end_time)-mins(b.start_time),0);
+if(used+dur>MAXM){say("walkinMsg","err","เช่าได้รวมไม่เกิน 4 ชั่วโมงต่อวัน (วันนี้เช่าไปแล้ว "+(used/60)+" ชั่วโมง)");return}
+const requested={book_date:today,computer_id:pc,start_time:hm(walkinStart),end_time:hm(end)};
+$("walkinSubmit").disabled=true;
+const r=await sb.from(TABLE.booking).insert({...requested,status:"pending"});
+if(r.error){say("walkinMsg","err",r.error.code==="23P01"?"เครื่องนี้มีคำขอหรือรายการเช่าทับช่วงเวลาแล้ว กรุณาเลือกเครื่องอื่น":"ส่งคำขอไม่สำเร็จ: "+r.error.message);drawWalkinComputers();return}
+closeWalkinModal();say("msg","ok","ส่งคำขอเข้าใช้แล้ว รอแอดมินอนุมัติ");modalRequestKey=requestKey(requested);modalOpen=true;$("bookingModal").hidden=false;
+$("bookingModalState").textContent="ส่งคำขอเข้าใช้แล้ว";$("bookingModalTitle").textContent="กำลังรอแอดมินยืนยันการเข้าใช้";
+$("bookingModalDetail").textContent=nice(today)+" เวลา "+requested.start_time+"–"+requested.end_time+" เครื่อง "+pc+" · เริ่มใช้งานได้หลังแอดมินอนุมัติ";
+await load();
+}
+
 document.addEventListener("click",async e=>{
 const t=e.target.closest("button");if(!t||!user)return;
-if(t.dataset.d){state.date=t.dataset.d;state.pc=null;say("msg","","");await load()}
+if(t.id==="walkin"){await openWalkin()}
+else if(t.id==="walkinSubmit"){await submitWalkin()}
+else if(t.id==="walkinClose"){closeWalkinModal()}
+else if(t.dataset.d){state.date=t.dataset.d;state.pc=null;say("msg","","");await load()}
 else if(t.dataset.pc){state.pc=+t.dataset.pc;say("msg","","");draw()}
 else if(t.dataset.checkin||t.dataset.checkout){
 const isIn=!!t.dataset.checkin,id=t.dataset.checkin||t.dataset.checkout;

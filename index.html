@@ -249,7 +249,7 @@ const dur=state.end-state.start;
 const used=mine.filter(b=>b.book_date===state.date&&b.status!=="declined").reduce((s,b)=>s+mins(b.end_time)-mins(b.start_time),0);
 if(used+dur>MAXM){say("msg","err","เช่าได้รวมไม่เกิน 4 ชั่วโมงต่อวัน (วันนี้เช่าไปแล้ว "+used/60+" ชั่วโมง)");return}
 $("go").disabled=true;
-const r=await sb.from(TABLE.booking).insert({user_id:user.id,computer_id:state.pc,book_date:state.date,start_time:hm(state.start),end_time:hm(state.end),status:"pending"});
+const r=await sb.from(TABLE.booking).insert({computer_id:state.pc,book_date:state.date,start_time:hm(state.start),end_time:hm(state.end),status:"pending"});
 if(r.error)say("msg","err",r.error.code==="23P01"?"ช่วงเวลานี้มีคำขอหรือรายการเช่าอยู่แล้ว เลือกเครื่องหรือเวลาอื่น":"ส่งคำขอไม่สำเร็จ: "+r.error.message);
 else say("msg","ok","ส่งคำขอเช่าเครื่อง "+state.pc+" แล้ว กรุณารอแอดมินอนุมัติ");
 state.pc=null;await load()}

@@ -62,7 +62,7 @@ input,select{border-radius:12px}
 <div class="bar" id="bar" hidden><span>แอดมิน <b id="who"></b></span><button class="link" id="out">ออกจากระบบ</button></div>
 </header>
 
-<form class="card login" id="login">
+<form class="card login" id="login" hidden>
 <label>รหัสนักศึกษา<input id="sid" inputmode="numeric" autocomplete="username" maxlength="11"></label>
 <label>รหัสผ่าน<input id="pw" type="password" autocomplete="current-password"></label>
 <button class="btn full" id="enter">เข้าสู่ระบบ</button>
@@ -116,7 +116,7 @@ input,select{border-radius:12px}
 <script>
 const SB_URL="https://mqdlozxpfnmmvjybzjga.supabase.co";
 const SB_KEY="sb_publishable_JG5pC_vBKMoZSBIb7s_VJA_JwZYurqi";
-const sb=supabase.createClient(SB_URL,SB_KEY);
+const sb=supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 const $=id=>document.getElementById(id);
 const iso=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
 const nice=s=>new Date(s+"T00:00").toLocaleDateString("th-TH",{weekday:"short",day:"numeric",month:"short",year:"numeric"});
@@ -144,7 +144,8 @@ async function enter(u,sid){
 const a=await sb.from("admins").select("user_id").eq("user_id",u.id).maybeSingle();
 if(a.error){await sb.auth.signOut();show(false);say("lmsg","err","ตรวจสิทธิ์แอดมินไม่สำเร็จ: "+a.error.message);return}
 if(!a.data){await sb.auth.signOut();show(false);say("lmsg","err","บัญชีนี้ไม่มีสิทธิ์แอดมิน (ตรวจว่าเพิ่มใน ตาราง admins แล้ว)");return}
-$("who").textContent=sid||(u.user_metadata&&u.user_metadata.student_id)||"";
+const emailSid=(u.email||"").match(/^(\d{8,11})@student\.labbooking\.com$/i);
+$("who").textContent=sid||(u.user_metadata&&u.user_metadata.student_id)||(emailSid&&emailSid[1])||"";
 say("lmsg","","");show(true);await loadAll()}
 
 $("out").onclick=async()=>{await sb.auth.signOut();show(false)};
@@ -244,7 +245,7 @@ say("cmsg",r.error||!(r.data||[]).length?"err":"ok",r.error||!(r.data||[]).lengt
 await loadClosed()}});
 
 setInterval(()=>{if(ok){loadDay();loadPending()}},20000);
-(async()=>{const s=await sb.auth.getSession();if(s.data.session)await enter(s.data.session.user)})();
+(async()=>{const {data,error}=await sb.auth.getSession();if(error){show(false);say("lmsg","err","ตรวจสอบสถานะเข้าสู่ระบบไม่สำเร็จ: "+error.message);return}if(data.session)await enter(data.session.user);else show(false)})();
 </script>
 </body>
 </html>

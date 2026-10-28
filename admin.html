@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
-<title>แอดมิน · ห้องปฏิบัติการ T310</title>
+<title>แอดมิน · ห้องปฏิบัติการที่ T310</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <style>
@@ -46,7 +46,7 @@ li button{border:0;background:none;font:inherit;color:var(--danger);cursor:point
 <body>
 <div class="wrap">
 <header>
-<h1>แอดมิน ห้องปฏิบัติการ T310</h1>
+<h1>แอดมิน ห้องปฏิบัติการที่ T310</h1>
 <p class="muted">ดูและยกเลิกการเช่า ตั้งสถานะเครื่องที่ใช้งานไม่ได้ชั่วคราว และกำหนดวันปิดห้อง</p>
 <div class="bar" id="bar" hidden><span>แอดมิน <b id="who"></b></span><button class="link" id="out">ออกจากระบบ</button></div>
 </header>
@@ -60,6 +60,12 @@ li button{border:0;background:none;font:inherit;color:var(--danger);cursor:point
 
 <div class="grid" id="app" hidden>
 <main class="card">
+<section style="margin-top:18px;padding-top:16px;border-top:1px solid var(--line)">
+<h2>คำขอเช่าที่รออนุมัติ</h2>
+<p class="muted" style="margin-bottom:10px;font-size:.9rem">คำขอจะแสดงตรงนี้อัตโนมัติ ไม่ต้องเลือกวันที่ ใช้ปุ่มอนุมัติหรือปฏิเสธเพื่อจัดการ</p>
+<ul id="pendingList"></ul>
+<p class="msg" id="pendingMsg" role="status"></p>
+</section>
 <h2>รายการเช่า</h2>
 <div class="tools">
 <button class="btn ghost" id="prev" aria-label="วันก่อนหน้า">ก่อนหน้า</button>
@@ -71,12 +77,7 @@ li button{border:0;background:none;font:inherit;color:var(--danger);cursor:point
 <div class="stats"><div class="stat"><b id="sN">0</b>รายการ</div><div class="stat"><b id="sH">0</b>ชั่วโมงรวม</div><div class="stat"><b id="sP">0</b>เครื่องที่ถูกใช้</div></div>
 <ul id="list"></ul>
 <p class="msg" id="msg" role="status"></p>
-<section style="margin-top:18px;padding-top:16px;border-top:1px solid var(--line)">
-<h2>คำขอเช่าที่รออนุมัติ</h2>
-<p class="muted" style="margin-bottom:10px;font-size:.9rem">อนุมัติแล้วจึงจะถือว่ายืนยันการเช่า หากปฏิเสธ ช่วงเวลานั้นจะกลับไปว่าง</p>
-<ul id="pendingList"></ul>
-<p class="msg" id="pendingMsg" role="status"></p>
-</section>
+
 </main>
 <aside class="side">
 <section class="card">
